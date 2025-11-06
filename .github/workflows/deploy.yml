@@ -19,7 +19,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            cd ~/ALTF4
+            cd ~/ALTF4_nuit_info_2025/ALTF4
             git pull
             docker compose down
             docker compose up -d --build
