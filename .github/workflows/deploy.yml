@@ -23,5 +23,6 @@ jobs:
           script: |
             cd ~/ALTF4_nuit_info_2025/ALTF4
             git pull
-            docker compose down
+            docker compose down --remove-orphans || true
+            docker rm -f hackaton-frontend hackaton-backend hackaton-db || true
             docker compose up -d --build
