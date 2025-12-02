@@ -1,16 +1,26 @@
-# React + Vite
+# ALTF4 – Front + API + MySQL
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Pile complète avec frontend React/Vite, backend Express/Prisma et base MySQL orchestrés par Docker Compose.
 
-Currently, two official plugins are available:
+## Démarrage rapide
+1. Vérifier/adapter le fichier `.env` à la racine (ports, credentials MySQL, etc.).
+2. Lancer la stack : `docker compose up --build`.
+3. Frontend disponible sur `http://localhost:8083`, API sur `http://localhost:4000` (`/health`, `/api/messages`).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Backend (dossier `server/`)
+- Express + Prisma. Scripts utiles : `npm run dev`, `npm start`, `npm run prisma:deploy` (pour appliquer les migrations), `npm run prisma:push` (sync schema en dev).
+- Routes incluses :
+  - `GET /health` pour vérifier l’accès DB.
+  - `GET /api/messages` et `POST /api/messages` (création/fetch simples).
+- Schéma Prisma et migrations dans `server/prisma/`.
 
-## React Compiler
+## Base de données
+- MySQL 8 (service `db`). Données persistées dans le volume Docker `db_data`.
+- Variables `.env` utilisées par Prisma/MySQL : `DATABASE_URL`, `MYSQL_ROOT_PASSWORD`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Développement local (sans Docker)
+1. Installer le frontend : `npm install` (racine).
+2. Installer le backend : `cd server && npm install`.
+3. Lancer MySQL localement ou via `docker compose up db`.
+4. Démarrer l’API : `npm run dev` dans `server/` (veillez à `DATABASE_URL`).
+5. Démarrer le front : `npm run dev` à la racine.
