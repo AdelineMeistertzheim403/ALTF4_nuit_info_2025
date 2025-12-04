@@ -18,6 +18,7 @@ import { useCanvas } from './hooks/useCanvas';
 import { useGameLoop } from './hooks/useGameLoop';
 import { Camera } from './camera/Camera';
 import InputManager from '../../game/core/InputManager';
+import { spriteLoader } from '../../game/data/wasteSprites';
 import './WareZone.css';
 
 // ============================================
@@ -28,6 +29,16 @@ const CONFIG = {
     BACKGROUND_COLOR: '#0a0a0f',
     GRID_COLOR: 'rgba(255, 255, 255, 0.03)',
     GRID_SIZE: 50,  // Taille des cases de la grille
+
+    // Déchets
+    WASTE_COUNT: 20,           // Nombre de déchets sur la map
+    WASTE_SIZE: 40,            // Taille des sprites de déchets
+    WASTE_SPAWN_RADIUS: 1500,  // Rayon de spawn autour de l'origine
+    PICKUP_DISTANCE: 35,       // Distance pour ramasser un déchet
+
+    // Snake
+    SEGMENT_SPACING: 25,       // Espacement entre les segments
+    SEGMENT_SIZE: 30,          // Taille des segments
 
     // Debug
     DEBUG: true,  // Affiche des infos de debug
@@ -53,9 +64,48 @@ export function WareZone({
     const playerAngleRef = useRef(0); // Angle en radians
     const playerSpeedRef = useRef(150); // Pixels par seconde
 
+    // Historique des positions pour les segments
+    const positionHistoryRef = useRef([]);
+
+    // Segments du snake (déchets ramassés)
+    const segmentsRef = useRef([]); // { x, y, sprite, image }
+
+    // Déchets sur la map
+    const wastesRef = useRef([]); // { x, y, sprite, image }
+    const wastesInitializedRef = useRef(false);
+
     // ---- State ----
     const [score, setScore] = useState(0);
     const [gameState, setGameState] = useState('playing'); // 'playing' | 'paused' | 'gameover'
+
+    // ============================================
+    // INITIALISATION DES DÉCHETS
+    // ============================================
+    const spawnWastes = useCallback(async () => {
+        // Charger tous les sprites
+        await spriteLoader.loadAll();
+
+        const wastes = [];
+        for (let i = 0; i < CONFIG.WASTE_COUNT; i++) {
+            // Position aléatoire dans le rayon de spawn
+            const angle = Math.random() * Math.PI * 2;
+            const distance = Math.random() * CONFIG.WASTE_SPAWN_RADIUS;
+            const x = Math.cos(angle) * distance;
+            const y = Math.sin(angle) * distance;
+
+            // Obtenir un sprite (peut être une image ou une partie de spritesheet)
+            const spriteData = spriteLoader.getRandomSprite();
+            const image = new Image();
+            image.src = spriteData.src;
+
+            wastes.push({
+                x, y,
+                spriteData,
+                image
+            });
+        }
+        wastesRef.current = wastes;
+    }, []);
 
     // ============================================
     // INITIALISATION
@@ -64,6 +114,12 @@ export function WareZone({
         // Créer l'InputManager une seule fois
         if (!inputRef.current) {
             inputRef.current = new InputManager();
+        }
+
+        // Spawner les déchets une seule fois
+        if (!wastesInitializedRef.current) {
+            spawnWastes();
+            wastesInitializedRef.current = true;
         }
 
         const camera = cameraRef.current;
@@ -80,7 +136,7 @@ export function WareZone({
                 inputRef.current = null;
             }
         };
-    }, [dimensions]);
+    }, [dimensions, spawnWastes]);
 
     // ============================================
     // DESSIN DE LA GRILLE INFINIE
@@ -198,6 +254,59 @@ export function WareZone({
         playerPositionRef.current.x += Math.cos(playerAngleRef.current) * currentSpeed * deltaTime;
         playerPositionRef.current.y += Math.sin(playerAngleRef.current) * currentSpeed * deltaTime;
 
+        // Sauvegarder la position dans l'historique (pour les segments)
+        positionHistoryRef.current.unshift({
+            x: playerPositionRef.current.x,
+            y: playerPositionRef.current.y,
+            angle: playerAngleRef.current
+        });
+
+        // Limiter la taille de l'historique
+        const maxHistory = (segmentsRef.current.length + 1) * CONFIG.SEGMENT_SPACING + 100;
+        if (positionHistoryRef.current.length > maxHistory) {
+            positionHistoryRef.current.pop();
+        }
+
+        // ---- COLLISION AVEC LES DÉCHETS ----
+        const playerX = playerPositionRef.current.x;
+        const playerY = playerPositionRef.current.y;
+
+        wastesRef.current = wastesRef.current.filter(waste => {
+            const dx = waste.x - playerX;
+            const dy = waste.y - playerY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < CONFIG.PICKUP_DISTANCE) {
+                // Ramasser le déchet - l'ajouter comme segment
+                segmentsRef.current.push({
+                    spriteData: waste.spriteData,
+                    image: waste.image
+                });
+
+                // Mettre à jour le score (utiliser setTimeout pour éviter setState pendant render)
+                setTimeout(() => {
+                    setScore(prev => {
+                        const newScore = prev + 10;
+                        if (onScoreChange) onScoreChange(newScore);
+                        return newScore;
+                    });
+                }, 0);
+
+                // Spawner un nouveau déchet ailleurs
+                const angle = Math.random() * Math.PI * 2;
+                const dist = Math.random() * CONFIG.WASTE_SPAWN_RADIUS;
+                const newX = Math.cos(angle) * dist;
+                const newY = Math.sin(angle) * dist;
+                const spriteData = spriteLoader.getRandomSprite();
+                const image = new Image();
+                image.src = spriteData.src;
+                wastesRef.current.push({ x: newX, y: newY, spriteData, image });
+
+                return false; // Supprimer ce déchet
+            }
+            return true; // Garder ce déchet
+        });
+
         // Mettre à jour la caméra
         camera.update();
 
@@ -214,7 +323,69 @@ export function WareZone({
             drawOrigin(ctx, camera);
         }
 
-        // 4. Dessiner le joueur (triangle pointant dans la direction)
+        // 4. Dessiner les déchets sur la map
+        wastesRef.current.forEach(waste => {
+            if (camera.isVisible(waste.x, waste.y, CONFIG.WASTE_SIZE)) {
+                const screenPos = camera.worldToScreen(waste.x, waste.y);
+                if (waste.image.complete) {
+                    const sd = waste.spriteData;
+                    if (sd.type === 'spritesheet') {
+                        // Découper depuis la spritesheet
+                        ctx.drawImage(
+                            waste.image,
+                            sd.x, sd.y, sd.w, sd.h,  // Source (découpe)
+                            screenPos.x - CONFIG.WASTE_SIZE / 2,
+                            screenPos.y - CONFIG.WASTE_SIZE / 2,
+                            CONFIG.WASTE_SIZE,
+                            CONFIG.WASTE_SIZE
+                        );
+                    } else {
+                        // Image complète
+                        ctx.drawImage(
+                            waste.image,
+                            screenPos.x - CONFIG.WASTE_SIZE / 2,
+                            screenPos.y - CONFIG.WASTE_SIZE / 2,
+                            CONFIG.WASTE_SIZE,
+                            CONFIG.WASTE_SIZE
+                        );
+                    }
+                }
+            }
+        });
+
+        // 5. Dessiner les segments du snake (queue)
+        segmentsRef.current.forEach((segment, index) => {
+            // Calculer la position du segment basée sur l'historique
+            const historyIndex = (index + 1) * CONFIG.SEGMENT_SPACING;
+            const pos = positionHistoryRef.current[historyIndex];
+
+            if (pos && segment.image.complete) {
+                const screenPos = camera.worldToScreen(pos.x, pos.y);
+                const sd = segment.spriteData;
+                if (sd.type === 'spritesheet') {
+                    // Découper depuis la spritesheet
+                    ctx.drawImage(
+                        segment.image,
+                        sd.x, sd.y, sd.w, sd.h,
+                        screenPos.x - CONFIG.SEGMENT_SIZE / 2,
+                        screenPos.y - CONFIG.SEGMENT_SIZE / 2,
+                        CONFIG.SEGMENT_SIZE,
+                        CONFIG.SEGMENT_SIZE
+                    );
+                } else {
+                    // Image complète
+                    ctx.drawImage(
+                        segment.image,
+                        screenPos.x - CONFIG.SEGMENT_SIZE / 2,
+                        screenPos.y - CONFIG.SEGMENT_SIZE / 2,
+                        CONFIG.SEGMENT_SIZE,
+                        CONFIG.SEGMENT_SIZE
+                    );
+                }
+            }
+        });
+
+        // 6. Dessiner la tête du snake (triangle)
         const playerScreen = camera.worldToScreen(
             playerPositionRef.current.x,
             playerPositionRef.current.y
@@ -240,12 +411,12 @@ export function WareZone({
 
         ctx.restore();
 
-        // 5. Debug info
+        // 7. Debug info
         if (debug || CONFIG.DEBUG) {
             drawDebugInfo(ctx, camera, deltaTime);
         }
 
-    }, [ctx, isPaused, gameState, fill, drawGrid, drawOrigin, drawDebugInfo, debug]);
+    }, [ctx, isPaused, gameState, fill, drawGrid, drawOrigin, drawDebugInfo, debug, onScoreChange]);
 
     // Démarrer la boucle
     useGameLoop({
