@@ -4,10 +4,10 @@ import GrooveBox from "../components/GrooveBox/GrooveBox";
 import ToneControls from "../components/GrooveBox/ToneControls";
 import CanvasVisualizer from "../components/Visualizer/CanvasVisualizer";
 import ThreeVisualizer from "../components/Visualizer/ThreeVisualizer";
-import { patternAtom, playingAtom, soundControlsAtom, currentStepAtom } from "../state/grooveState";
+import { patternAtom, playingAtom, soundControlsAtom, currentStepAtom, muteAtom } from "../state/grooveState";
 import { initTone } from "../audio/toneInit";
 import { applyControls } from "../audio/instruments";
-import { startTransport, stopTransport, updateTransportControls } from "../audio/transport";
+import { startTransport, stopTransport, updateTransportControls, updateMutes } from "../audio/transport";
 import "./groovebox.css";
 
 export default function GrooveBoxMain() {
@@ -15,16 +15,21 @@ export default function GrooveBoxMain() {
   const [playing, setPlaying] = useAtom(playingAtom);
   const [controls] = useAtom(soundControlsAtom);
   const [, setCurrentStep] = useAtom(currentStepAtom);
+  const [mutes] = useAtom(muteAtom);
 
   useEffect(() => {
     applyControls(controls);
     updateTransportControls(controls);
   }, [controls]);
 
+  useEffect(() => {
+    updateMutes(mutes);
+  }, [mutes]);
+
   async function togglePlay() {
     if (!playing) {
       await initTone();
-      startTransport(pattern, controls, setCurrentStep);
+      startTransport(pattern, controls, mutes, setCurrentStep);
     } else {
       stopTransport(setCurrentStep);
     }

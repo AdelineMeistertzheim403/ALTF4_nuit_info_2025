@@ -26,3 +26,16 @@ export const soundControlsAtom = atom({
 });
 
 export const currentStepAtom = atom(0);
+
+export const muteAtom = atom({
+  kick: false,
+  kick808: false,
+  snare: false,
+  snare909: false,
+  hat: false,
+  clap: false,
+  bass: false,
+  fmBass: false,
+  pad: false,
+  keys: false,
+});
