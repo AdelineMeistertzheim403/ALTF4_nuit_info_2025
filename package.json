@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.4.2",
+    "jotai": "^2.15.2",
+    "three": "^0.181.2",
+    "tone": "^15.1.22"
+  }
+}
