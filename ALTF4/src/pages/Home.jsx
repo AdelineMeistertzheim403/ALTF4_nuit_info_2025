@@ -6,7 +6,7 @@ const dialog = new Dialogs();
 
 function App() {
     const openAlertDialog = () => {
-        dialog.showDialog('My Title', 'This is the alert message. blablablablablablablablablablablablablablablablablabla', 100000, 'https://picsum.photos/200/300');
+        dialog.showDialog('My Title', 'This is the alert message. blablablablablablablablablablablablablablablablablabla', 20);
     };
   return (
     <div>
