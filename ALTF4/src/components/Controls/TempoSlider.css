@@ -1,0 +1,11 @@
+.bpm-selector {
+    width: 3%;
+    font-size: 20px;
+}
+
+
+.bpm-value {
+    border: 3px solid rgb(255, 234, 44);
+    border-radius: 30%;
+    text-align: center;
+}
