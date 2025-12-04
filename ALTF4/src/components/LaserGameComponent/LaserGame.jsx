@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import Join from './LaserGameComponent/Join';
-import Pseudo from './LaserGameComponent/Pseudo';
-import Leave from './LaserGameComponent/Leave';
-import Game from './LaserGameComponent/Game';
-import LeaderBoard from './LaserGameComponent/LeaderBoard'; // J'ai retiré Score qui semblait inutile ici
+import Join from './Join';
+import Pseudo from './Pseudo';
+import Leave from './Leave';
+import Game from './Game';
+import LeaderBoard from './LeaderBoard'; // J'ai retiré Score qui semblait inutile ici
 
 function LaserGame() {
     // États

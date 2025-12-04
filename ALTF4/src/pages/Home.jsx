@@ -1,6 +1,6 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import LaserGame from '../component/LaserGame';
+import LaserGame from '../components/LaserGameComponent/LaserGame';
 
 function Home() {
   return (
