@@ -283,12 +283,14 @@ export function WareZone({
                     image: waste.image
                 });
 
-                // Mettre à jour le score
-                setScore(prev => {
-                    const newScore = prev + 10;
-                    if (onScoreChange) onScoreChange(newScore);
-                    return newScore;
-                });
+                // Mettre à jour le score (utiliser setTimeout pour éviter setState pendant render)
+                setTimeout(() => {
+                    setScore(prev => {
+                        const newScore = prev + 10;
+                        if (onScoreChange) onScoreChange(newScore);
+                        return newScore;
+                    });
+                }, 0);
 
                 // Spawner un nouveau déchet ailleurs
                 const angle = Math.random() * Math.PI * 2;
