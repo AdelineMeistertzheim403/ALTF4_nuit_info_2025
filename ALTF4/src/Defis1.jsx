@@ -298,7 +298,6 @@
                     <div class="window-frame">
                         <div class="window-title">&gt; WINDOWS.EXE</div>
                         <div class="window-content"><img src="https://user-gen-media-assets.s3.amazonaws.com/seedream_images/65b00cd1-ead2-4b27-8ab2-253ba9a87658.png" alt="Windows"></div>
-                        <div class="window-label">WINDOWS</div>
                     </div>
                 </div>
                 <div class="window-texte">Ça coûte cher<br>Ton PC devient lent<br>Tes données voyagent<br>T'es prisonner</div>
@@ -309,7 +308,6 @@
                     <div class="window-frame">
                         <div class="window-title">&gt; LINUX.SH</div>
                         <div class="window-content"><img src="https://user-gen-media-assets.s3.amazonaws.com/seedream_images/65aa3498-04e3-4af2-9ed5-53be806db45d.png" alt="Linux"></div>
-                        <div class="window-label">LINUX</div>
                     </div>
                 </div>
                 <div class="window-texte">C'est GRATUIT<br>Ton PC devient rapide<br>Tes données RESTENT chez toi<br>T'es libre et autonome</div>
