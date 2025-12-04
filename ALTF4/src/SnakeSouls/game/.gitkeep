@@ -1,0 +1,13 @@
+// Placeholders pour les fichiers à implémenter
+
+// game/core/Game.js - À implémenter
+// game/entities/PlayerSnake.js - À implémenter
+// game/entities/EnemySnake.js - À implémenter
+// game/entities/Bonus.js - À implémenter
+// game/systems/CollisionSystem.js - À implémenter
+// game/systems/SpawnSystem.js - À implémenter
+// game/systems/ScoreSystem.js - À implémenter
+// game/ai/AIBehavior.js - À implémenter
+// game/ai/AggressiveAI.js - À implémenter
+// game/ai/PassiveAI.js - À implémenter
+// game/ai/RandomAI.js - À implémenter

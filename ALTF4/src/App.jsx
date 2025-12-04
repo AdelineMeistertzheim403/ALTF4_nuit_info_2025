@@ -2,7 +2,6 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 
 import Home from './pages/Home';
-import GrooveBoxMain from './pages/GrooveBoxMain'
 
 function App() {
   return (
@@ -13,8 +12,7 @@ function App() {
         {/* exemple d'une autre route */}
         {/* <Route path="/about" element={<About />} /> */}
 
-        <Route path="*" element={<Home />} /> {/* Route 404 redirige page principale */}
-        <Route path="/groovebox" element={<GrooveBoxMain/>}/>
+        <Route path="*" element={<Home />} /> {/* Route 404 : redirige vers la page principale */}
       </Routes>
     </div>
   );
