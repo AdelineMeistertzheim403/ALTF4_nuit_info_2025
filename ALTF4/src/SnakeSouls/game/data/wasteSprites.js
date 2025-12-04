@@ -2,7 +2,7 @@
  * Liste des sprites de déchets disponibles
  * Ces déchets seront mangés par le snake et formeront sa queue
  *
- * Certains fichiers sont des spritesheets qu'on découpe
+ * Détection automatique des sprites dans les spritesheets
  */
 
 // Import des spritesheets
@@ -14,51 +14,106 @@ import electronics2Sheet from '../../assets/sprites/wastes/electronics/electroni
 const hardwareModules = import.meta.glob('/src/SnakeSouls/assets/sprites/wastes/computer_hardware/separated/**/*.png', { eager: true });
 export const HARDWARE_SPRITES = Object.values(hardwareModules).map(mod => mod.default);
 
-// Configuration des spritesheets (positions des sprites dans chaque sheet)
-export const SPRITESHEETS = {
-    displays: {
-        src: displaySheet,
-        // Grille approximative basée sur l'image (5 colonnes, 4 lignes)
-        sprites: [
-            // Ligne 1
-            { x: 0, y: 0, w: 48, h: 48 },
-            { x: 48, y: 0, w: 32, h: 32 },
-            { x: 80, y: 0, w: 48, h: 32 },
-            { x: 128, y: 0, w: 32, h: 32 },
-            { x: 160, y: 0, w: 48, h: 48 },
-            { x: 208, y: 0, w: 32, h: 40 },
-            // Ligne 2
-            { x: 0, y: 56, w: 64, h: 56 },
-            { x: 72, y: 56, w: 48, h: 48 },
-            { x: 128, y: 48, w: 48, h: 48 },
-            { x: 184, y: 48, w: 48, h: 48 },
-            // Ligne 3
-            { x: 0, y: 120, w: 48, h: 48 },
-            { x: 56, y: 120, w: 48, h: 48 },
-            { x: 112, y: 112, w: 40, h: 48 },
-            { x: 160, y: 112, w: 48, h: 40 },
-            // Ligne 4
-            { x: 0, y: 176, w: 64, h: 48 },
-            { x: 72, y: 176, w: 48, h: 48 },
-            { x: 128, y: 168, w: 32, h: 48 },
-            { x: 168, y: 168, w: 48, h: 48 },
-            { x: 216, y: 176, w: 40, h: 48 },
-        ]
-    },
-    electronics1: {
-        src: electronics1Sheet,
-        // Grille 4x5 de 32x32 pixels environ
-        gridSize: 24,
-        cols: 5,
-        rows: 6
-    },
-    electronics2: {
-        src: electronics2Sheet,
-        gridSize: 24,
-        cols: 5,
-        rows: 6
-    }
-};
+// Liste des spritesheets à analyser
+export const SPRITESHEET_SOURCES = [
+    displaySheet,
+    electronics1Sheet,
+    electronics2Sheet
+];
+
+/**
+ * Détecte automatiquement les sprites dans une image
+ * en trouvant les "îles" de pixels non-transparents
+ */
+async function detectSpritesInImage(imageSrc, minSize = 8) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+
+        img.onload = () => {
+            // Créer un canvas pour analyser les pixels
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+
+            const imageData = ctx.getImageData(0, 0, img.width, img.height);
+            const data = imageData.data;
+            const width = img.width;
+            const height = img.height;
+
+            // Créer une grille de pixels non-transparents
+            const visited = new Array(width * height).fill(false);
+            const sprites = [];
+
+            // Fonction pour vérifier si un pixel est non-transparent
+            const isOpaque = (x, y) => {
+                if (x < 0 || x >= width || y < 0 || y >= height) return false;
+                const idx = (y * width + x) * 4;
+                return data[idx + 3] > 10; // Alpha > 10
+            };
+
+            // Flood fill pour trouver une île de pixels
+            const floodFill = (startX, startY) => {
+                const stack = [[startX, startY]];
+                let minX = startX, maxX = startX;
+                let minY = startY, maxY = startY;
+
+                while (stack.length > 0) {
+                    const [x, y] = stack.pop();
+                    const idx = y * width + x;
+
+                    if (x < 0 || x >= width || y < 0 || y >= height) continue;
+                    if (visited[idx]) continue;
+                    if (!isOpaque(x, y)) continue;
+
+                    visited[idx] = true;
+
+                    minX = Math.min(minX, x);
+                    maxX = Math.max(maxX, x);
+                    minY = Math.min(minY, y);
+                    maxY = Math.max(maxY, y);
+
+                    // Ajouter les voisins (4-connectivité)
+                    stack.push([x + 1, y]);
+                    stack.push([x - 1, y]);
+                    stack.push([x, y + 1]);
+                    stack.push([x, y - 1]);
+                }
+
+                return { minX, maxX, minY, maxY };
+            };
+
+            // Scanner l'image pour trouver tous les sprites
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const idx = y * width + x;
+                    if (!visited[idx] && isOpaque(x, y)) {
+                        const bounds = floodFill(x, y);
+                        const w = bounds.maxX - bounds.minX + 1;
+                        const h = bounds.maxY - bounds.minY + 1;
+
+                        // Filtrer les sprites trop petits (bruit)
+                        if (w >= minSize && h >= minSize) {
+                            sprites.push({
+                                x: bounds.minX,
+                                y: bounds.minY,
+                                w: w,
+                                h: h
+                            });
+                        }
+                    }
+                }
+            }
+
+            resolve(sprites);
+        };
+
+        img.onerror = () => resolve([]);
+        img.src = imageSrc;
+    });
+}
 
 // Classe pour gérer le découpage des spritesheets
 export class SpriteLoader {
@@ -78,46 +133,23 @@ export class SpriteLoader {
             });
         });
 
-        // Ajouter les spritesheets avec leurs découpes
-        // Electronics 1 - grille régulière
-        const e1 = SPRITESHEETS.electronics1;
-        for (let row = 0; row < e1.rows; row++) {
-            for (let col = 0; col < e1.cols; col++) {
+        // Détecter automatiquement les sprites dans chaque spritesheet
+        for (const sheetSrc of SPRITESHEET_SOURCES) {
+            const detectedSprites = await detectSpritesInImage(sheetSrc, 10);
+
+            detectedSprites.forEach(sprite => {
                 this.loadedSprites.push({
                     type: 'spritesheet',
-                    src: e1.src,
-                    x: col * e1.gridSize,
-                    y: row * e1.gridSize,
-                    w: e1.gridSize,
-                    h: e1.gridSize
+                    src: sheetSrc,
+                    x: sprite.x,
+                    y: sprite.y,
+                    w: sprite.w,
+                    h: sprite.h
                 });
-            }
-        }
-
-        // Electronics 2 - grille régulière
-        const e2 = SPRITESHEETS.electronics2;
-        for (let row = 0; row < e2.rows; row++) {
-            for (let col = 0; col < e2.cols; col++) {
-                this.loadedSprites.push({
-                    type: 'spritesheet',
-                    src: e2.src,
-                    x: col * e2.gridSize,
-                    y: row * e2.gridSize,
-                    w: e2.gridSize,
-                    h: e2.gridSize
-                });
-            }
-        }
-
-        // Displays - positions manuelles
-        SPRITESHEETS.displays.sprites.forEach(sprite => {
-            this.loadedSprites.push({
-                type: 'spritesheet',
-                src: SPRITESHEETS.displays.src,
-                ...sprite
             });
-        });
+        }
 
+        console.log(`SpriteLoader: ${this.loadedSprites.length} sprites chargés`);
         this.isLoaded = true;
         return this.loadedSprites;
     }
