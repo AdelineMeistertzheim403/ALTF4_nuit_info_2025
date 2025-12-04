@@ -2,7 +2,7 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import LaserGame from '../component/LaserGame';
 
-function App() {
+function Home() {
   return (
     <div>
       <LaserGame />
@@ -12,4 +12,4 @@ function App() {
   );
 }
 
-export default App;
+export default Home;
