@@ -1,13 +1,70 @@
-import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import React, { useState } from 'react';
+import Join from './LaserGameComponent/Join';
+import Pseudo from './LaserGameComponent/Pseudo';
+import Leave from './LaserGameComponent/Leave';
+import Game from './LaserGameComponent/Game';
+import LeaderBoard from './LaserGameComponent/LeaderBoard'; // J'ai retiré Score qui semblait inutile ici
 
 function LaserGame() {
-  return (
-    <div>
-      <h1>Code du Lasergame</h1>
-      
-    </div>
-  );
+    // États
+    const [step, setStep] = useState('join'); 
+    const [pseudo, setPseudo] = useState('');
+    const [score, setScore] = useState(0); // Nouvel état pour le score
+
+    // --- Fonctions de gestion ---
+
+    const goToPseudo = () => {
+        setStep('pseudo');
+    };
+
+    const handlePseudoValidation = (name) => {
+        setPseudo(name);
+        setStep('game');
+    };
+
+    const handleQuit = () => {
+        setPseudo('');
+        setScore(0); // On remet le score à zéro en quittant
+        setStep('join');
+    };
+
+    // Fonction passée à Game pour augmenter le score
+    const handleShoot = () => {
+        setScore(prevScore => prevScore + 10); // +10 points par tir, par exemple
+    };
+
+    return (
+        <div>
+            {step === 'join' && (
+                <Join onStart={goToPseudo} />
+            )}
+
+            {step === 'pseudo' && (
+                <Pseudo 
+                    onValidate={handlePseudoValidation} 
+                    onCancel={handleQuit} 
+                />
+            )}
+
+            {step === 'game' && (
+                <div>
+                    {/* On passe le score et le pseudo au LeaderBoard */}
+                    {/* Z-index élevé pour qu'il soit au-dessus du jeu */}
+                    <div style={{ position: 'relative', zIndex: 10 }}>
+                        <LeaderBoard pseudo={pseudo} score={score} />
+                    </div>
+
+                    {/* On passe la fonction handleShoot au Jeu */}
+                    <Game pseudo={pseudo} onShoot={handleShoot} />
+                    
+                    {/* Bouton quitter au-dessus du jeu */}
+                    <div style={{ position: 'relative', zIndex: 10 }}>
+                        <Leave onQuit={handleQuit} />
+                    </div>
+                </div>
+            )}
+        </div>
+    );
 }
 
 export default LaserGame;
