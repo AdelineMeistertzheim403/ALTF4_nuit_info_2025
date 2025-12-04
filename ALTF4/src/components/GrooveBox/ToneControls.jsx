@@ -10,7 +10,7 @@ const sliders = [
   { key: "keysTranspose", label: "Transpose", min: -12, max: 12, step: 1, suffix: "st" },
 ];
 
-export default function ToneControls() {
+export default function ToneControls({ action }) {
   const [controls, setControls] = useAtom(soundControlsAtom);
 
   function onChange(key, value) {
@@ -56,6 +56,8 @@ export default function ToneControls() {
         />
         <span>Arpégiateur (pad/keys)</span>
       </label>
+
+      {action ? <div className="tone-actions">{action}</div> : null}
     </div>
   );
 }

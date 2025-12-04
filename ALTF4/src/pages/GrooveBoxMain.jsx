@@ -3,6 +3,7 @@ import { useAtom } from "jotai";
 import GrooveBox from "../components/GrooveBox/GrooveBox";
 import ToneControls from "../components/GrooveBox/ToneControls";
 import CanvasVisualizer from "../components/Visualizer/CanvasVisualizer";
+import ThreeVisualizer from "../components/Visualizer/ThreeVisualizer";
 import { patternAtom, playingAtom, soundControlsAtom, currentStepAtom } from "../state/grooveState";
 import { initTone } from "../audio/toneInit";
 import { applyControls } from "../audio/instruments";
@@ -33,16 +34,29 @@ export default function GrooveBoxMain() {
   return (
     <div className="groove-page">
       <div className="visualizer-bg" aria-hidden="true">
-        <CanvasVisualizer />
+        <div className="visualizer-3d-row">
+          <div className="visualizer-3d-pane left">
+            <ThreeVisualizer />
+          </div>
+          <div className="visualizer-3d-pane right">
+            <ThreeVisualizer />
+          </div>
+        </div>
+        <div className="visualizer-bars">
+          <CanvasVisualizer />
+        </div>
       </div>
 
       <div className="groove-content">
         <h1 className="groove-title">GrooveBox Visualizer</h1>
         <GrooveBox />
-        <ToneControls />
-        <button className="play-toggle" onClick={togglePlay}>
-          {playing ? "Stop" : "Start"}
-        </button>
+        <ToneControls
+          action={
+            <button className="play-toggle" onClick={togglePlay}>
+              {playing ? "Stop" : "Start"}
+            </button>
+          }
+        />
       </div>
     </div>
   );
