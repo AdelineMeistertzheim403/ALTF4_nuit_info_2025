@@ -227,7 +227,7 @@ export default class Game {
     this.ctx.fillStyle = '#EF4444';
     this.ctx.font = 'bold 48px sans-serif';
     this.ctx.textAlign = 'center';
-    this.ctx.fillText('GAME OVER', this.canvasWidth / 2, this.canvasHeight / 2 - 40);
+    this.ctx.fillText('YOU DIED', this.canvasWidth / 2, this.canvasHeight / 2 - 40);
     
     this.ctx.fillStyle = 'white';
     this.ctx.font = '24px sans-serif';

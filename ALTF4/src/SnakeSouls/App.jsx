@@ -1,6 +1,7 @@
 // Composant principal de l'application Snake
 import React, { useState, useCallback } from 'react';
 import { WareZone } from './components/WareZone';
+import backgroundImage from './assets/images/snakesouls.webp';
 import '../index.css';
 
 const SnakeSoulsApp = () => {
@@ -46,41 +47,72 @@ const SnakeSoulsApp = () => {
         justifyContent: 'center',
         fontFamily: 'Segoe UI, sans-serif',
         color: 'white',
+        position: 'relative',
       }}>
-        <h1 style={{ marginBottom: '10px', color: '#60A5FA', fontSize: '3rem' }}>
-          SnakeSouls
-        </h1>
-        <p style={{ marginBottom: '40px', opacity: 0.7 }}>
-          Déplacement libre - Rotation 360°
-        </p>
+        {/* Image de fond complète */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundImage: `url(${backgroundImage})`,
+          backgroundSize: 'contain',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          opacity: 1,
+          zIndex: 0,
+        }} />
 
         <button
           onClick={startGame}
           style={{
-            padding: '20px 60px',
-            fontSize: '1.5rem',
-            fontWeight: 'bold',
-            color: 'white',
-            background: 'linear-gradient(135deg, #60A5FA 0%, #3B82F6 100%)',
-            border: 'none',
-            borderRadius: '12px',
+            padding: '25px 70px',
+            fontSize: '1.8rem',
+            fontWeight: '600',
+            letterSpacing: '3px',
+            color: '#d4af37',
+            background: 'linear-gradient(180deg, rgba(40, 40, 40, 0.9) 0%, rgba(20, 20, 20, 0.95) 100%)',
+            border: '3px solid #6b5d47',
+            borderRadius: '0',
             cursor: 'pointer',
-            boxShadow: '0 8px 16px rgba(96, 165, 250, 0.3)',
-            transition: 'all 0.3s ease'
+            boxShadow: 'inset 0 0 20px rgba(0, 0, 0, 0.8), 0 0 30px rgba(212, 175, 55, 0.3)',
+            transition: 'all 0.4s ease',
+            position: 'relative',
+            zIndex: 1,
+            textTransform: 'uppercase',
+            fontFamily: 'Georgia, serif',
+            textShadow: '0 0 10px rgba(212, 175, 55, 0.5), 2px 2px 4px rgba(0, 0, 0, 0.8)',
+            marginTop: '750px',
           }}
           onMouseOver={(e) => {
-            e.target.style.transform = 'scale(1.05)';
-            e.target.style.boxShadow = '0 12px 24px rgba(96, 165, 250, 0.5)';
+            e.target.style.transform = 'scale(1.08)';
+            e.target.style.color = '#ffecb3';
+            e.target.style.borderColor = '#d4af37';
+            e.target.style.boxShadow = 'inset 0 0 25px rgba(0, 0, 0, 0.9), 0 0 50px rgba(212, 175, 55, 0.6), 0 0 80px rgba(212, 175, 55, 0.3)';
           }}
           onMouseOut={(e) => {
             e.target.style.transform = 'scale(1)';
-            e.target.style.boxShadow = '0 8px 16px rgba(96, 165, 250, 0.3)';
+            e.target.style.color = '#d4af37';
+            e.target.style.borderColor = '#6b5d47';
+            e.target.style.boxShadow = 'inset 0 0 20px rgba(0, 0, 0, 0.8), 0 0 30px rgba(212, 175, 55, 0.3)';
           }}
         >
           START
         </button>
 
-        <p style={{ marginTop: '40px', opacity: 0.6, fontSize: '0.9rem', textAlign: 'center' }}>
+        <p style={{ 
+          marginTop: '50px', 
+          opacity: 0.7, 
+          fontSize: '0.95rem', 
+          textAlign: 'center', 
+          position: 'relative', 
+          zIndex: 1,
+          color: '#b8a68f',
+          fontFamily: 'Georgia, serif',
+          letterSpacing: '1px',
+          textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)'
+        }}>
           Flèches pour tourner | Espace pour pause
         </p>
       </div>
