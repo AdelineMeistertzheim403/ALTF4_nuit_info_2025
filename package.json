@@ -1,5 +1,10 @@
 {
   "dependencies": {
+    "react-router-dom": "^7.10.1"
+  }
+}
+{
+  "dependencies": {
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.4.2",
     "jotai": "^2.15.2",
