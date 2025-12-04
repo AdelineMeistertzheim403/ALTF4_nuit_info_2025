@@ -63,9 +63,9 @@ export default class Snake extends Entity {
     const newX = head.position.x + Math.cos(this.angle) * this.speed;
     const newY = head.position.y + Math.sin(this.angle) * this.speed;
 
-    // Créer nouveau segment à la tête
-    const newHead = new Segment(newX, newY, this.segmentRadius);
-    this.segments.unshift(newHead);
+    // Déplacer la tête
+    head.position.x = newX;
+    head.position.y = newY;
 
     // Faire suivre le corps
     this.updateBody();
@@ -86,8 +86,8 @@ export default class Snake extends Entity {
    * Grandir le serpent
    */
   grow(amount = 3) {
-    const tail = this.segments[this.segments.length - 1];
     for (let i = 0; i < amount; i++) {
+      const tail = this.segments[this.segments.length - 1];
       const newSegment = new Segment(
         tail.position.x,
         tail.position.y,

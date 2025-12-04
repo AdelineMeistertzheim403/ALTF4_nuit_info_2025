@@ -14,7 +14,9 @@ export const useGame = (GameClass, config = {}) => {
   useEffect(() => {
     // Créer l'instance du jeu
     if (!gameRef.current) {
-      gameRef.current = new GameClass(config);
+      const canvasWidth = config.canvasWidth || 800;
+      const canvasHeight = config.canvasHeight || 600;
+      gameRef.current = new GameClass(canvasWidth, canvasHeight);
       
       // Abonner aux changements d'état du jeu
       gameRef.current.onStateChange = (newState) => {
@@ -28,7 +30,7 @@ export const useGame = (GameClass, config = {}) => {
         gameRef.current.destroy();
       }
     };
-  }, [GameClass, config]);
+  }, []);
 
   const start = () => {
     if (gameRef.current) {
