@@ -6,10 +6,11 @@ const dialog = new Dialogs();
 
 function App() {
 
+    dialog.showDialog('My Title', 'This is the alert message. blablablablablablablablablablablablablablablablablabla', 20);
+
     return (
         <div>
-            <h1></h1>
-            <button>Show Alert</button>
+            <h1>Scenario</h1>
         </div>
     );
 }
