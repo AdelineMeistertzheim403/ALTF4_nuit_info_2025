@@ -17,6 +17,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useCanvas } from './hooks/useCanvas';
 import { useGameLoop } from './hooks/useGameLoop';
 import { Camera } from './camera/Camera';
+import InputManager from '../../game/core/InputManager';
 import './WareZone.css';
 
 // ============================================
@@ -39,14 +40,18 @@ export function WareZone({
                              onScoreChange,
                              onGameOver,
                              isPaused = false,
-                             debug = false
+                             debug = false,
+                             children
                          }) {
     // ---- Hooks ----
     const { canvasRef, ctx, dimensions, fill } = useCanvas();
 
     // ---- Refs (persistantes entre les renders) ----
     const cameraRef = useRef(new Camera());
-    const playerPositionRef = useRef({ x: 0, y: 0 }); // Simulé pour l'instant
+    const inputRef = useRef(null);
+    const playerPositionRef = useRef({ x: 0, y: 0 });
+    const playerAngleRef = useRef(0); // Angle en radians
+    const playerSpeedRef = useRef(150); // Pixels par seconde
 
     // ---- State ----
     const [score, setScore] = useState(0);
@@ -56,12 +61,25 @@ export function WareZone({
     // INITIALISATION
     // ============================================
     useEffect(() => {
+        // Créer l'InputManager une seule fois
+        if (!inputRef.current) {
+            inputRef.current = new InputManager();
+        }
+
         const camera = cameraRef.current;
 
         // La caméra suit la position du joueur
         camera.setTarget(playerPositionRef.current);
         camera.resize(dimensions.width, dimensions.height);
         camera.centerOnTarget();
+
+        // Cleanup
+        return () => {
+            if (inputRef.current) {
+                inputRef.current.destroy();
+                inputRef.current = null;
+            }
+        };
     }, [dimensions]);
 
     // ============================================
@@ -154,13 +172,31 @@ export function WareZone({
         if (!ctx || isPaused || gameState !== 'playing') return;
 
         const camera = cameraRef.current;
+        const input = inputRef.current;
 
         // ---- UPDATE ----
 
-        // Simuler un mouvement de joueur (à remplacer par le vrai snake)
-        const time = Date.now() / 1000;
-        playerPositionRef.current.x = Math.cos(time * 0.5) * 200;
-        playerPositionRef.current.y = Math.sin(time * 0.5) * 200;
+        // Rotation avec les flèches gauche/droite
+        const rotationSpeed = 3; // Radians par seconde
+        if (input && input.isKeyPressed('ArrowLeft')) {
+            playerAngleRef.current -= rotationSpeed * deltaTime;
+        }
+        if (input && input.isKeyPressed('ArrowRight')) {
+            playerAngleRef.current += rotationSpeed * deltaTime;
+        }
+
+        // Vitesse avec flèches haut/bas
+        let currentSpeed = playerSpeedRef.current;
+        if (input && input.isKeyPressed('ArrowUp')) {
+            currentSpeed = 250; // Accélérer
+        }
+        if (input && input.isKeyPressed('ArrowDown')) {
+            currentSpeed = 80; // Ralentir
+        }
+
+        // Déplacer le joueur dans la direction de l'angle
+        playerPositionRef.current.x += Math.cos(playerAngleRef.current) * currentSpeed * deltaTime;
+        playerPositionRef.current.y += Math.sin(playerAngleRef.current) * currentSpeed * deltaTime;
 
         // Mettre à jour la caméra
         camera.update();
@@ -178,20 +214,33 @@ export function WareZone({
             drawOrigin(ctx, camera);
         }
 
-        // 4. [ICI] Dessiner les entités (snakes, bonus, etc.)
-        // ... sera ajouté plus tard
-
-        // 5. Placeholder : cercle représentant le "joueur"
+        // 4. Dessiner le joueur (triangle pointant dans la direction)
         const playerScreen = camera.worldToScreen(
             playerPositionRef.current.x,
             playerPositionRef.current.y
         );
+
+        ctx.save();
+        ctx.translate(playerScreen.x, playerScreen.y);
+        ctx.rotate(playerAngleRef.current);
+
+        // Triangle (tête du snake)
         ctx.fillStyle = '#4ade80';
         ctx.beginPath();
-        ctx.arc(playerScreen.x, playerScreen.y, 15, 0, Math.PI * 2);
+        ctx.moveTo(20, 0);      // Pointe avant
+        ctx.lineTo(-10, -12);   // Arrière gauche
+        ctx.lineTo(-10, 12);    // Arrière droite
+        ctx.closePath();
         ctx.fill();
 
-        // 6. Debug info
+        // Cercle central
+        ctx.beginPath();
+        ctx.arc(0, 0, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+
+        // 5. Debug info
         if (debug || CONFIG.DEBUG) {
             drawDebugInfo(ctx, camera, deltaTime);
         }
@@ -199,16 +248,11 @@ export function WareZone({
     }, [ctx, isPaused, gameState, fill, drawGrid, drawOrigin, drawDebugInfo, debug]);
 
     // Démarrer la boucle
-    const { pause, resume } = useGameLoop(gameLoop, [ctx, gameState]);
-
-    // Gérer la pause externe
-    useEffect(() => {
-        if (isPaused) {
-            pause();
-        } else {
-            resume();
-        }
-    }, [isPaused, pause, resume]);
+    useGameLoop({
+        update: gameLoop,
+        render: null,
+        isRunning: !isPaused && gameState === 'playing' && ctx !== null
+    });
 
     // ============================================
     // RENDER
@@ -220,31 +264,15 @@ export function WareZone({
                 className="warezone__canvas"
             />
 
-            {/* Overlay pour UI */}
+            {/* Overlay pour UI (children passés par le parent) */}
             <div className="warezone__overlay">
-                {/* HUD */}
-                <div className="warezone__hud">
-                    <div className="warezone__score">
-                        Score: {score}
-                    </div>
-                </div>
+                {children}
 
-                {/* Écran de pause */}
+                {/* Écran de pause interne */}
                 {gameState === 'paused' && (
                     <div className="warezone__pause">
-                        <h2>⏸️ PAUSE</h2>
+                        <h2>PAUSE</h2>
                         <p>Appuie sur ESPACE pour continuer</p>
-                    </div>
-                )}
-
-                {/* Game Over */}
-                {gameState === 'gameover' && (
-                    <div className="warezone__gameover">
-                        <h2>💀 GAME OVER</h2>
-                        <p className="score">Score final: {score}</p>
-                        <button onClick={() => setGameState('playing')}>
-                            Rejouer
-                        </button>
                     </div>
                 )}
             </div>
