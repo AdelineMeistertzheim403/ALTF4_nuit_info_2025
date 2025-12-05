@@ -18,7 +18,7 @@ function App() {
     async function runScenario1() {
       await dialog.showDialog("", "Pierre se réveille dans une ruelle sombre, un monde complètement abstrait pour lui.", 30);
       await dialog.changeBackground("/image_ville.jpeg");
-      await dialog.showDialog("Pierre", "Où suis‑je…? *mumure*", 30);
+      await dialog.showDialog("Pierre", "Où suis‑je…? *murmure*", 30);
       await dialog.showDialog("", "Complètement perdu, il se relève avec peine et commence à explorer la ville. Les néons vacillent, les panneaux publicitaires diffusent des images qu’il ne comprend pas.  ", 30);
       await dialog.showDialog("Pierre", "Pourquoi suis‑je ici? *souffle‑t‑il, la voix tremblante*", 30);
       await dialog.showDialog("", "Il sort son téléphone: l’écran clignote, la date s’affiche **2150**.", 30);
