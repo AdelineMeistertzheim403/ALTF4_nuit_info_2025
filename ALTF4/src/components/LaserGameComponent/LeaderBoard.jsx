@@ -7,11 +7,11 @@ const getApiUrl = () => {
 
   // Si l'URL contient ton domaine de prod
   if (hostname.includes('adelinemeistertzheim.fr')) {
-    return 'https://altf4.adelinemeistertzheim.fr/api/scores';
+    return 'https://altf4backend.adelinemeistertzheim.fr/api/scores';
   }
 
   // Sinon, on est probablement en local, on tape sur le port 4000
-  return 'http://localhost:4000/api/scores';
+  return 'http://51.91.249.121:4000/api/scores';
 };
 
 export default function LeaderBoard({ pseudo, score, rang, onReplay, onQuit }) {

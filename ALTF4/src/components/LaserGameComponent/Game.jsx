@@ -22,9 +22,9 @@ function rand(min, max) {
 const getApiUrl = () => {
     const hostname = window.location.hostname;
     if (hostname.includes('adelinemeistertzheim.fr')) {
-      return 'https://altf4.adelinemeistertzheim.fr/api/scores';
+      return 'https://altf4backend.adelinemeistertzheim.fr/api/scores';
     }
-    return 'http://localhost:4000/api/scores';
+    return 'http://51.91.249.121:4000/api/scores';
 };
 
 const GameHUD = ({ score, timeLeft }) => {
