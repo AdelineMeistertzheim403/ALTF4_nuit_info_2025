@@ -3,7 +3,8 @@ import { Routes, Route } from 'react-router-dom';
 
 import Home from './pages/Home';
 import KeysPage from "./pages/KeysPage.jsx";
-import DigicodePage from "./pages/DigicodePage.jsx";
+// import DigicodePage from "./pages/DigicodePage.jsx";
+import DigicodePage from "./pages/AdminLogin";
 
 function App() {
   return (

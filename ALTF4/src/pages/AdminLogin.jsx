@@ -1,7 +1,7 @@
 // src/pages/AdminLogin.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "./AdminLogin.css"; // Assure-toi de créer ce fichier
+import "./AdminLogin.css"; 
 
 export default function AdminLogin() {
   const navigate = useNavigate();
