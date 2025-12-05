@@ -38,8 +38,7 @@ const GameHUD = ({ score, timeLeft }) => {
 
 function Game({ pseudo, onShoot, onHit }) {
     const [score, setScore] = useState(0);
-    // Note: Mettez 300 ici pour 5 minutes, actuellement réglé à 10s pour tester
-    const [timeLeft, setTimeLeft] = useState(10); 
+    const [timeLeft, setTimeLeft] = useState(180); 
     const [isGameOver, setIsGameOver] = useState(false);
 
     const [blasts, setBlasts] = useState([]);
