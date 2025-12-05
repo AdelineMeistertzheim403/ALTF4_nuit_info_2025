@@ -1,8 +1,11 @@
 // Composant principal de l'application Snake
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { WareZone } from './components/WareZone';
 import backgroundImage from './assets/images/snakesouls.webp';
 import youDiedImage from './assets/images/youdied.png';
+import menuMusic from './assets/sounds/Création_Vidéo_SnakeSouls_Rétro_Pixel.mp3';
+import deathSound from './assets/sounds/dark-souls-you-died-sound-effect_hm5sYFG(1).mp3';
+import { useSound } from './hooks/useSound';
 import '../index.css';
 
 const SnakeSoulsApp = () => {
@@ -12,7 +15,21 @@ const SnakeSoulsApp = () => {
   const [lives, setLives] = useState(3);
   const [isGameOver, setIsGameOver] = useState(false);
 
+  // Sons du jeu
+  const menuMusicSound = useSound(menuMusic, { loop: false, volume: 0.3 });
+  const deathSoundEffect = useSound(deathSound, { volume: 0.5 });
+
+  // Jouer la musique de menu au chargement
+  useEffect(() => {
+    if (!gameStarted) {
+      menuMusicSound.play();
+    } else {
+      menuMusicSound.stop();
+    }
+  }, [gameStarted]);
+
   const startGame = () => {
+    menuMusicSound.stop();
     setGameStarted(true);
     setIsGameOver(false);
     setScore(0);
@@ -25,8 +42,13 @@ const SnakeSoulsApp = () => {
   }, []);
 
   const handleGameOver = useCallback(() => {
-    setIsGameOver(true);
-  }, []);
+    setIsGameOver(prev => {
+      if (!prev) {
+        deathSoundEffect.play();
+      }
+      return true;
+    });
+  }, [deathSoundEffect]);
 
   const resetGame = () => {
     setGameStarted(false);
@@ -34,6 +56,7 @@ const SnakeSoulsApp = () => {
     setScore(0);
     setLives(3);
     setIsPaused(false);
+    menuMusicSound.play();
   };
 
   // Écran de démarrage
