@@ -140,17 +140,29 @@ function Game({ pseudo, onShoot, onHit }) {
                 const firingEnemies = [...prev];
                 firingEnemies.forEach(ent => {
                     if (now - ent.lastShot > ent.shootCooldown) {
-                        const dx = mx - ent.x; // Utilisation de mx (ref)
-                        const dy = my - ent.y; // Utilisation de my (ref)
-                        const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                        
+                        // 1. Calculer la distance et l'angle vers la souris (ref)
+                        const dx = mx - ent.x; 
+                        const dy = my - ent.y; 
+                        
+                        // Math.atan2 donne l'angle exact (en radians) vers le joueur
+                        const perfectAngle = Math.atan2(dy, dx);
+
+                        // 2. Ajouter de l'imprécision (Spread)
+                        // Une valeur de 0.2 correspond environ à +/- 11 degrés d'erreur.
+                        // Plus le chiffre est grand, moins ils sont précis.
+                        const spread = 0.1; 
+                        const angle = perfectAngle + rand(-spread, spread);
+
                         const speed = 5;
                         
                         setBullets(bPrev => [...bPrev, {
                             id: now + Math.floor(Math.random()*100000),
                             x: ent.x,
                             y: ent.y,
-                            vx: (dx / dist) * speed,
-                            vy: (dy / dist) * speed,
+                            // 3. Convertir l'angle final en vitesse X et Y
+                            vx: Math.cos(angle) * speed,
+                            vy: Math.sin(angle) * speed,
                             from: 'enemy'
                         }]);
 
