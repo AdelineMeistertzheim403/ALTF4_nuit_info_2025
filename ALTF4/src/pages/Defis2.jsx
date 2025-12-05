@@ -25,7 +25,7 @@ export default function Defis2() {
 
         setTimeout(() => {
             window.location.href = "/keys";
-        }, 800);
+        }, 2500);
     }
 
 
@@ -87,7 +87,7 @@ export default function Defis2() {
 
                                 ) : (
                                     <div className="key-box" id="keyDisplay">
-                                        ✔ Clé récupérée !
+                                        ✔ Clé Argent récupérée !
                                     </div>
                                 )}
                             </div>

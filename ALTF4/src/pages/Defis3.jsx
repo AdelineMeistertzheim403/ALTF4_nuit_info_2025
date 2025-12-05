@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import "./Defis3.css";
+import "../styles/Defis3.css";
 
 export default function CostPC() {
     const [modal, setModal] = useState({
@@ -10,6 +10,19 @@ export default function CostPC() {
 
     const openModal = (type) => {
         setModal({ open: true, type });
+
+        // ✅ Si l'utilisateur choisit Ubuntu → débloquer la clé OR
+        if (type === "success") {
+            const keys = JSON.parse(localStorage.getItem("unlockedKeys") || "[]");
+
+            if (!keys.includes("gold")) {
+                keys.push("gold");
+                localStorage.setItem("unlockedKeys", JSON.stringify(keys));
+            }
+            setTimeout(() => {
+                window.location.href = "/keys";
+            }, 2500);
+        }
     };
 
     const closeModal = () => {
@@ -89,13 +102,13 @@ export default function CostPC() {
                         </span>
 
                         <div className={`modal-title ${modal.type === "error" ? "error" : ""}`}>
-                            {modal.type === "error" ? "⚠ MAUVAIS CHOIX ⚠" : "✓ CLÉ DÉVERROUILLÉE ✓"}
+                            {modal.type === "error" ? "⚠ MAUVAIS CHOIX ⚠" : "✓ CLÉ DÉVERROUILLÉE"}
                         </div>
 
                         <div className={`modal-message ${modal.type === "error" ? "error" : ""}`}>
                             {modal.type === "error"
                                 ? "Windows vous ruinera. Vous avez perdu!"
-                                : "Vous avez récupéré la clé Linux!"}
+                                : "Vous avez récupéré la clé or !"}
                         </div>
                     </div>
                 </div>

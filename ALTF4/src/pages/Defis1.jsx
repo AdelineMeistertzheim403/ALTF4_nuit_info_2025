@@ -14,7 +14,7 @@ export default function Defis1() {
             setMessage("⚠ MAUVAIS CHOIX ⚠");
             setMessageClass("bad");
         } else {
-            setMessage("✓ VOUS AVEZ DEBLOQUÉ LA CLÉ ✓");
+            setMessage("✓ VOUS AVEZ DEBLOQUÉ LA CLÉ BRONZE");
             setMessageClass("good");
 
             // --- ⬇⬇ NOUVELLE LOGIQUE DE STOCKAGE ---
@@ -24,7 +24,9 @@ export default function Defis1() {
                 keys.push("bronze");
                 localStorage.setItem("unlockedKeys", JSON.stringify(keys));
             }
-            // --- ⬆⬆ ---
+            setTimeout(() => {
+                window.location.href = "/keys";
+            }, 2500);
         }
 
         setShowMessage(true);

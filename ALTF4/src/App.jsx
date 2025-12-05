@@ -9,7 +9,7 @@ import GrooveBoxMain from './pages/GrooveBoxMain'
 import Scenario from './pages/Scenarios/Scenario';
 import Defis1 from "./pages/Defis1.jsx";
 import Defis2 from "./pages/Defis2.jsx";
-
+import Defis3 from "./pages/Defis3.jsx";
 
 
 function App() {
@@ -23,6 +23,8 @@ function App() {
         <Route path="/groovebox" element={<GrooveBoxMain/>}/>
           <Route path="/defis1" element={<Defis1/>}/>
           <Route path="/defis2" element={<Defis2/>}/>
+          <Route path="/defis3" element={<Defis3/>}/>
+
 
         <Route path="*" element={<Home />} /> {/* Route 404 : redirige vers la page principale */}
       </Routes>

@@ -99,7 +99,7 @@ h1 {
 
 .contract-container {
     position: relative;
-    width: 100%;
+    width: 50%;
 }
 
 .contract-box {
@@ -314,4 +314,48 @@ button {
     font-family: 'Courier New', monospace;
     color: var(--color-primary);
     text-shadow: 0 0 5px var(--color-primary);
-    box-shadow: 0 0 15px rgba(0, 255, 136, 0
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+    user-select: all;
+    margin-top: 10px;
+}
+
+#keyDisplay {
+    animation: popIn 0.5s ease forwards;
+}
+
+@keyframes popIn {
+    0% { opacity: 0; transform: scale(0.8); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+.disclaimer {
+    color: var(--color-accent);
+    font-size: 0.8rem;
+    text-align: center;
+    margin-top: 20px;
+    text-shadow: 0 0 5px var(--color-accent);
+    animation: pulse-text 2s ease-in-out infinite;
+}
+
+@keyframes pulse-text {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+}
+
+.nav-link {
+    text-align: center;
+    margin-top: 10px;
+}
+
+.nav-link a {
+    color: var(--color-primary);
+    text-decoration: none;
+    text-shadow: 0 0 5px var(--color-primary);
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.nav-link a:hover {
+    color: var(--color-secondary);
+    text-shadow: 0 0 10px var(--color-secondary);
+}
