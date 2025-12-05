@@ -1,4 +1,4 @@
-:root {
+.page {
     --color-background: #0a0e27;
     --color-primary: #00ff88;
     --color-secondary: #00ffff;
@@ -10,15 +10,7 @@
     --color-glow-secondary: rgba(0, 255, 255, 0.8);
     --color-glow-accent: rgba(255, 0, 136, 0.8);
     --color-glow-danger: rgba(255, 23, 68, 0.8);
-}
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-.page {
     width: 100%;
     min-height: 100vh;
     background: linear-gradient(135deg, #0a0e27 0%, #1a1a4e 50%, #2a0a3e 100%);
@@ -61,7 +53,7 @@
     padding: 40px 20px;
 }
 
-h1 {
+.container h1 {
     color: var(--color-primary);
     font-size: 3rem;
     text-shadow:
@@ -97,12 +89,12 @@ h1 {
     }
 }
 
-.contract-container {
+.contractContainer {
     position: relative;
     width: 50%;
 }
 
-.contract-box {
+.contractBox {
     border: 4px solid;
     border-image: linear-gradient(135deg, var(--color-primary), var(--color-secondary)) 1;
     background: linear-gradient(135deg, rgba(0, 255, 136, 0.15), rgba(0, 255, 255, 0.12));
@@ -122,7 +114,7 @@ h1 {
     align-items: center;
 }
 
-.contract-box::before {
+.contractBox::before {
     content: '';
     position: absolute;
     top: 0;
@@ -145,7 +137,7 @@ h1 {
     100% { transform: translateY(100%); }
 }
 
-.contract-box.revealed {
+.contractBox.revealed {
     border-image: linear-gradient(135deg, var(--color-danger), var(--color-primary)) 1;
     box-shadow:
             0 0 50px rgba(255, 23, 68, 0.8),
@@ -153,7 +145,7 @@ h1 {
             0 0 100px var(--color-danger);
 }
 
-.contract-title {
+.contractTitle {
     color: var(--color-primary);
     font-size: 1.3rem;
     font-weight: bold;
@@ -165,7 +157,7 @@ h1 {
     z-index: 2;
 }
 
-.contract-content {
+.contractContent {
     color: var(--color-secondary);
     font-size: 0.9rem;
     line-height: 1.8;
@@ -176,7 +168,7 @@ h1 {
     transition: all 0.5s ease;
 }
 
-.hidden-content {
+.hiddenContent {
     display: none;
     color: var(--color-danger);
     text-shadow:
@@ -184,7 +176,7 @@ h1 {
             0 0 15px var(--color-danger);
 }
 
-.hidden-content.revealed {
+.hiddenContent.revealed {
     display: block;
     animation: revealContent 1s ease forwards;
 }
@@ -194,7 +186,7 @@ h1 {
     100% { opacity: 1; transform: scale(1); }
 }
 
-.world-map {
+.worldMap {
     position: relative;
     width: 100%;
     height: 200px;
@@ -205,7 +197,7 @@ h1 {
     overflow: hidden;
 }
 
-.data-point {
+.dataPoint {
     position: absolute;
     width: 15px;
     height: 15px;
@@ -220,7 +212,7 @@ h1 {
     50% { opacity: 1; }
 }
 
-.button-container {
+.buttonContainer {
     display: flex;
     gap: 20px;
     justify-content: center;
@@ -230,7 +222,7 @@ h1 {
     margin-top: 20px;
 }
 
-button {
+.buttonContainer button {
     padding: 15px 40px;
     font-size: 1rem;
     font-family: 'Courier New', monospace;
@@ -243,7 +235,7 @@ button {
     text-transform: uppercase;
 }
 
-.btn-reveal {
+.btnReveal {
     color: var(--color-danger);
     border-color: var(--color-danger);
     background: transparent;
@@ -251,13 +243,13 @@ button {
     box-shadow: 0 0 15px rgba(255, 23, 68, 0.3);
 }
 
-.btn-reveal:hover {
+.btnReveal:hover {
     background: rgba(255, 23, 68, 0.2);
     box-shadow: 0 0 30px rgba(255, 23, 68, 0.6);
     transform: scale(1.05);
 }
 
-.btn-back {
+.btnBack {
     color: var(--color-primary);
     border-color: var(--color-primary);
     background: transparent;
@@ -265,13 +257,13 @@ button {
     box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
 }
 
-.btn-back:hover {
+.btnBack:hover {
     background: rgba(0, 255, 136, 0.2);
     box-shadow: 0 0 30px rgba(0, 255, 136, 0.6);
     transform: scale(1.05);
 }
 
-.btn-key {
+.btnKey {
     color: var(--color-primary);
     border-color: var(--color-primary);
     background: transparent;
@@ -281,32 +273,32 @@ button {
     font-size: 0.9rem;
 }
 
-.btn-key:hover {
+.btnKey:hover {
     background: rgba(0, 255, 136, 0.2);
     box-shadow: 0 0 30px rgba(0, 255, 136, 0.6);
     transform: scale(1.05);
 }
 
-.location-list {
+.locationList {
     margin: 20px 0;
     text-align: left;
 }
 
-.location-list li {
+.locationList li {
     margin: 8px 0;
     list-style: none;
     padding-left: 20px;
     position: relative;
 }
 
-.location-list li::before {
+.locationList li::before {
     content: '📡';
     position: absolute;
     left: 0;
     text-shadow: 0 0 5px var(--color-danger);
 }
 
-.key-box {
+.keyBox {
     border: 2px solid var(--color-primary);
     padding: 15px;
     background: rgba(0, 255, 136, 0.1);
@@ -317,9 +309,6 @@ button {
     box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
     user-select: all;
     margin-top: 10px;
-}
-
-#keyDisplay {
     animation: popIn 0.5s ease forwards;
 }
 
@@ -334,20 +323,20 @@ button {
     text-align: center;
     margin-top: 20px;
     text-shadow: 0 0 5px var(--color-accent);
-    animation: pulse-text 2s ease-in-out infinite;
+    animation: pulseText 2s ease-in-out infinite;
 }
 
-@keyframes pulse-text {
+@keyframes pulseText {
     0%, 100% { opacity: 0.7; }
     50% { opacity: 1; }
 }
 
-.nav-link {
+.navLink {
     text-align: center;
     margin-top: 10px;
 }
 
-.nav-link a {
+.navLink a {
     color: var(--color-primary);
     text-decoration: none;
     text-shadow: 0 0 5px var(--color-primary);
@@ -355,7 +344,7 @@ button {
     transition: all 0.3s ease;
 }
 
-.nav-link a:hover {
+.navLink a:hover {
     color: var(--color-secondary);
     text-shadow: 0 0 10px var(--color-secondary);
 }
