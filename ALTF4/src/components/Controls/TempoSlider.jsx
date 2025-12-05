@@ -12,7 +12,7 @@ const TempoSlider = ({ initialBpm = 120, onBpmChange }) => {
     if (typeof onBpmChange === "function") {
       onBpmChange(bpm);
     }
-  }, [bpm, onBpmChange]);
+  }, [bpm]);
 
   const adjust = (delta) => {
     setBpm((prev) => Math.min(Math.max(prev + delta, 60), 200));

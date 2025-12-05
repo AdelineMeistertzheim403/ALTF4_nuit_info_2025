@@ -1,81 +1,284 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import Enemy from './Enemy';
 
-function Game({ pseudo, onShoot }) {
-    // État pour stocker les impacts de laser temporaires
+// Tes imports d'images...
+import appleImg from '../../SnakeSouls/assets/sprites/enemies/apple.png';
+import chromeImg from '../../SnakeSouls/assets/sprites/enemies/chrome.png';
+import huaweiImg from '../../SnakeSouls/assets/sprites/enemies/huawei.png';
+import ibmImg from '../../SnakeSouls/assets/sprites/enemies/ibm.png';
+import nvidiaImg from '../../SnakeSouls/assets/sprites/enemies/nvidia.png';
+import oracleImg from '../../SnakeSouls/assets/sprites/enemies/oracle.png';
+import samsungImg from '../../SnakeSouls/assets/sprites/enemies/samsung.png';
+import windowsImg from '../../SnakeSouls/assets/sprites/enemies/windows.png';
+
+function rand(min, max) {
+    return Math.random() * (max - min) + min;
+}
+
+function Game({ pseudo, onShoot, onHit }) {
     const [blasts, setBlasts] = useState([]);
+    const [enemies, setEnemies] = useState([]);
+    const [bullets, setBullets] = useState([]);
+    
+    // 1. CORRECTION BUG : On utilise useRef pour la souris et les callbacks
+    // Cela évite de redémarrer la boucle useEffect à chaque mouvement ou changement de score
+    const mousePosRef = useRef({ x: window.innerWidth/2, y: window.innerHeight/2 });
+    const onHitRef = useRef(onHit);
+    const onShootRef = useRef(onShoot);
 
-    const handleClick = (e) => {
-        // 1. Incrémenter le score via le parent
-        onShoot();
+    const enemyImages = [appleImg, chromeImg, huaweiImg, ibmImg, nvidiaImg, oracleImg, samsungImg, windowsImg];
+    const rafRef = useRef(null);
 
-        // 2. Créer un identifiant unique pour ce tir
-        const id = Date.now();
+    // Mettre à jour les refs quand les props changent
+    useEffect(() => {
+        onHitRef.current = onHit;
+        onShootRef.current = onShoot;
+    }, [onHit, onShoot]);
 
-        // 3. Ajouter l'impact à la liste avec les coordonnées de la souris
-        const newBlast = {
-            id: id,
-            x: e.clientX,
-            y: e.clientY
+    // Gestion de la souris via Ref (ne déclenche pas de re-render du composant, juste maj de la valeur)
+    useEffect(() => {
+        const onMove = (e) => {
+            mousePosRef.current = { x: e.clientX, y: e.clientY };
+        };
+        window.addEventListener('mousemove', onMove);
+        return () => window.removeEventListener('mousemove', onMove);
+    }, []);
+
+    // Spawning des ennemis (Limité à 10)
+    // Spawning des ennemis (Objectif : toujours 10 visibles)
+    useEffect(() => {
+        // On réduit l'intervalle (800ms au lieu de 1200ms) pour remplir l'écran plus vite
+        const spawnInterval = 800; 
+        
+        const spawnTimer = setInterval(() => {
+            setEnemies(prev => {
+                // Si on a déjà 10 ennemis, on ne fait rien
+                if (prev.length >= 10) return prev;
+
+                const edge = Math.floor(rand(0, 4));
+                const w = window.innerWidth;
+                const h = window.innerHeight;
+                let x, y;
+
+                // Position de départ (Hors écran)
+                switch(edge) {
+                    case 0: x = rand(0, w); y = -60; break; // Haut
+                    case 1: x = w + 60; y = rand(0, h); break; // Droite
+                    case 2: x = rand(0, w); y = h + 60; break; // Bas
+                    case 3: x = -60; y = rand(0, h); break; // Gauche
+                    default: x = rand(0, w); y = -60;
+                }
+
+                // --- CORRECTION MAJEURE ICI ---
+                // Au lieu d'un angle au hasard, on vise le centre de l'écran !
+                // Math.atan2(dy, dx) donne l'angle entre le point de spawn et le centre
+                const angleToCenter = Math.atan2((h / 2) - y, (w / 2) - x);
+                
+                // On ajoute un peu de variation (-0.5 à +0.5 radians) pour qu'ils ne foncent pas tous pile au milieu
+                const angle = angleToCenter + rand(-0.5, 0.5);
+
+                const img = enemyImages[Math.floor(rand(0, enemyImages.length))];
+                const speed = rand(2, 4); // Un peu plus rapide pour entrer vite
+
+                return [...prev, {
+                    id: Date.now() + Math.floor(Math.random() * 10000),
+                    x, y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    img,
+                    size: rand(34, 60),
+                    shootCooldown: rand(1000, 3000),
+                    lastShot: Date.now() + rand(0, 500),
+                    entered: false
+                }];
+            });
+        }, spawnInterval);
+
+        return () => clearInterval(spawnTimer);
+    }, []);
+
+    // Boucle de jeu principale
+    useEffect(() => {
+        const step = () => {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            // On lit la position souris depuis la Ref
+            const mx = mousePosRef.current.x;
+            const my = mousePosRef.current.y;
+
+            // 1. Ennemis
+            setEnemies(prev => prev.map(ent => {
+                let nx = ent.x + ent.vx;
+                let ny = ent.y + ent.vy;
+                let hasEntered = ent.entered;
+
+                if (!hasEntered) {
+                    if (nx > 0 && nx < width && ny > 0 && ny < height) hasEntered = true;
+                } else {
+                    const r = ent.size / 2;
+                    if (nx < r || nx > width - r) {
+                        ent.vx *= -1;
+                        nx = Math.max(r, Math.min(nx, width - r));
+                    }
+                    if (ny < r || ny > height - r) {
+                        ent.vy *= -1;
+                        ny = Math.max(r, Math.min(ny, height - r));
+                    }
+                }
+
+                if (Math.random() < 0.01) {
+                    ent.vx += rand(-0.5, 0.5);
+                    ent.vy += rand(-0.5, 0.5);
+                }
+                return { ...ent, x: nx, y: ny, entered: hasEntered };
+            }));
+
+            const now = Date.now();
+
+            // 2. Tirs Ennemis
+            setEnemies(prev => {
+                const firingEnemies = [...prev];
+                firingEnemies.forEach(ent => {
+                    if (now - ent.lastShot > ent.shootCooldown) {
+                        const dx = mx - ent.x; // Utilisation de mx (ref)
+                        const dy = my - ent.y; // Utilisation de my (ref)
+                        const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                        const speed = 5;
+                        
+                        setBullets(bPrev => [...bPrev, {
+                            id: now + Math.floor(Math.random()*100000),
+                            x: ent.x,
+                            y: ent.y,
+                            vx: (dx / dist) * speed,
+                            vy: (dy / dist) * speed,
+                            from: 'enemy'
+                        }]);
+
+                        ent.lastShot = now;
+                        ent.shootCooldown = rand(800, 2500);
+                    }
+                });
+                return firingEnemies;
+            });
+
+            // 3. Mouvement Balles
+            setBullets(prev => prev.map(b => ({ ...b, x: b.x + b.vx, y: b.y + b.vy })));
+
+            // 4. Collisions
+            setBullets(prev => prev.filter(b => {
+                if (b.from === 'enemy') {
+                    // Vérification collision avec la souris (ref)
+                    const d = Math.hypot(b.x - mx, b.y - my);
+                    
+                    if (d < 20) {
+                        // On utilise la Ref pour appeler la fonction sans relancer l'effet
+                        if (onHitRef.current) onHitRef.current(5); 
+                        return false; // Supprime la balle IMMÉDIATEMENT
+                    }
+                    
+                    if (b.x < -100 || b.x > width + 100 || b.y < -100 || b.y > height + 100) return false;
+                }
+                return true;
+            }));
+
+            rafRef.current = requestAnimationFrame(step);
         };
 
+        rafRef.current = requestAnimationFrame(step);
+        return () => cancelAnimationFrame(rafRef.current);
+    }, []); // Dépendance vide = boucle stable qui ne reset pas
+
+    const handleClick = (e) => {
+        const id = Date.now();
+        const newBlast = { id, x: e.clientX, y: e.clientY };
         setBlasts((prev) => [...prev, newBlast]);
 
-        // 4. Supprimer l'impact après 500ms (durée de l'animation)
-        setTimeout(() => {
-            setBlasts((prev) => prev.filter((blast) => blast.id !== id));
-        }, 500);
+        const explosionRadius = 60;
+        setEnemies(prev => {
+            const survivors = [];
+            prev.forEach(ent => {
+                const d = Math.hypot(ent.x - newBlast.x, ent.y - newBlast.y);
+                if (d < explosionRadius + ent.size/2) {
+                    if (onShootRef.current) onShootRef.current();
+                } else {
+                    survivors.push(ent);
+                }
+            });
+            return survivors;
+        });
+
+        setTimeout(() => setBlasts(p => p.filter(b => b.id !== id)), 400);
     };
 
     return (
-        // Conteneur INVISIBLE qui prend toute la page
         <div 
             onClick={handleClick}
             style={{
-                position: 'fixed', // Fixe par rapport à la fenêtre
-                top: 0,
-                left: 0,
-                width: '100vw',
-                height: '100vh',
-                cursor: 'crosshair', // Curseur en forme de viseur
-                zIndex: 1, // En dessous du leaderboard et du bouton quitter
-                background: 'transparent', // Invisible
-                overflow: 'hidden'
+                position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+                cursor: 'none', zIndex: 1, background: 'transparent', overflow: 'hidden'
             }}
         >
-            {/* Rendu des impacts de laser */}
+            {/* Curseur Joueur : On utilise mousePosRef.current directement ? 
+               Non, React ne re-rend pas le visuel si on change une ref. 
+               ASTUCE : Pour l'affichage du curseur SEULEMENT, on peut utiliser un petit state local 
+               ou une div qui suit la souris via CSS direct si on veut perf max, 
+               mais ici on va utiliser un petit listener dédié pour l'affichage visuel */}
+            <VisualCursor />
+
             {blasts.map((blast) => (
-                <div
-                    key={blast.id}
-                    style={{
-                        position: 'absolute',
-                        left: blast.x,
-                        top: blast.y,
-                        transform: 'translate(-50%, -50%)', // Centrer sur la souris
-                        pointerEvents: 'none', // Le clic passe au travers si on clique vite
-                    }}
-                >
-                    {/* Le cercle animé */}
+                <div key={blast.id} style={{
+                        position: 'absolute', left: blast.x, top: blast.y,
+                        transform: 'translate(-50%, -50%)', pointerEvents: 'none',
+                    }}>
                     <div className="laser-blast"></div>
-                    
-                    {/* Style CSS injecté directement pour l'exemple (ou à mettre dans ton .css) */}
-                    <style>
-                        {`
-                            @keyframes blastAnim {
-                                0% { width: 0px; height: 0px; opacity: 1; background: white; }
-                                50% { background: red; }
-                                100% { width: 100px; height: 100px; opacity: 0; background: red; }
-                            }
-                            .laser-blast {
-                                border-radius: 50%;
-                                animation: blastAnim 0.4s ease-out forwards;
-                                box-shadow: 0 0 10px red, 0 0 20px orange;
-                            }
-                        `}
-                    </style>
                 </div>
+            ))}
+            
+            <style>{`
+                @keyframes blastAnim {
+                    0% { width: 0px; height: 0px; opacity: 1; background: white; }
+                    50% { background: red; }
+                    100% { width: 100px; height: 100px; opacity: 0; background: red; }
+                }
+                .laser-blast {
+                    border-radius: 50%;
+                    animation: blastAnim 0.4s ease-out forwards;
+                    box-shadow: 0 0 10px red, 0 0 20px orange;
+                }
+            `}</style>
+
+            {enemies.map(ent => (
+                <Enemy key={ent.id} x={ent.x} y={ent.y} size={ent.size} img={ent.img} />
+            ))}
+
+            {bullets.map(b => (
+                <div key={b.id} style={{
+                    position: 'absolute', left: b.x, top: b.y, transform: 'translate(-50%, -50%)',
+                    width: 10, height: 10, borderRadius: '50%', backgroundColor: 'lime',
+                    boxShadow: '0 0 6px lime', pointerEvents: 'none'
+                }} />
             ))}
         </div>
     );
 }
+
+// Petit composant séparé pour gérer l'affichage du curseur sans impacter la boucle de jeu
+const VisualCursor = () => {
+    const [pos, setPos] = useState({ x: -100, y: -100 });
+    useEffect(() => {
+        const onMove = (e) => setPos({ x: e.clientX, y: e.clientY });
+        window.addEventListener('mousemove', onMove);
+        return () => window.removeEventListener('mousemove', onMove);
+    }, []);
+
+    return (
+        <div style={{
+            position: 'absolute', left: pos.x, top: pos.y,
+            transform: 'translate(-50%, -50%)', pointerEvents: 'none', zIndex: 5
+        }}>
+            <div style={{ width: 20, height: 20, border: '2px solid red', borderRadius: '50%', backgroundColor: 'rgba(255,0,0,0.2)' }} />
+        </div>
+    );
+};
 
 export default Game;
