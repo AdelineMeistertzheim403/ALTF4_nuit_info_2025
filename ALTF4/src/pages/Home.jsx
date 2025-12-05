@@ -1,7 +1,6 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
 
-function App() {
+function Home() {
   return (
     <div>
       <h1>Mon Site React</h1>
@@ -10,4 +9,4 @@ function App() {
   );
 }
 
-export default App;
+export default Home;

@@ -2,14 +2,12 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 
 import Home from './pages/Home';
-import SnakeSoulsApp from './SnakeSouls/App';
 
 function App() {
   return (
     <div className="App">
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/snake" element={<SnakeSoulsApp />} />
 
         {/* exemple d'une autre route */}
         {/* <Route path="/about" element={<About />} /> */}
