@@ -14,6 +14,7 @@ const SnakeSoulsApp = () => {
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
   const [isGameOver, setIsGameOver] = useState(false);
+  const [gameKey, setGameKey] = useState(0);
 
   // Sons du jeu
   const menuMusicSound = useSound(menuMusic, { loop: false, volume: 0.3 });
@@ -57,6 +58,14 @@ const SnakeSoulsApp = () => {
     setLives(3);
     setIsPaused(false);
     menuMusicSound.play();
+  };
+
+  const restartGame = () => {
+    setIsGameOver(false);
+    setScore(0);
+    setLives(3);
+    setIsPaused(false);
+    setGameKey(prev => prev + 1);
   };
 
   // Écran de démarrage
@@ -146,6 +155,7 @@ const SnakeSoulsApp = () => {
   // Zone de jeu avec WareZone
   return (
     <WareZone
+      key={gameKey}
       onScoreChange={handleScoreChange}
       onGameOver={handleGameOver}
       isPaused={isPaused}
@@ -201,6 +211,8 @@ const SnakeSoulsApp = () => {
           alignItems: 'center',
           justifyContent: 'center',
           background: '#000',
+          zIndex: 1000,
+          pointerEvents: 'auto',
         }}>
           {/* You Died background image */}
           <div style={{
@@ -225,12 +237,12 @@ const SnakeSoulsApp = () => {
             zIndex: 1,
             fontFamily: 'Georgia, serif',
             textShadow: '2px 2px 8px rgba(0, 0, 0, 0.9)',
-            marginTop: '200px'
+            marginTop: '500px'
           }}>
             Score Final: {score}
           </p>
           <button
-            onClick={resetGame}
+            onClick={restartGame}
             style={{
               padding: '20px 50px',
               fontSize: '1.5rem',
@@ -247,7 +259,8 @@ const SnakeSoulsApp = () => {
               zIndex: 1,
               textTransform: 'uppercase',
               fontFamily: 'Georgia, serif',
-              textShadow: '0 0 10px rgba(212, 175, 55, 0.5), 2px 2px 4px rgba(0, 0, 0, 0.8)'
+              textShadow: '0 0 10px rgba(212, 175, 55, 0.5), 2px 2px 4px rgba(0, 0, 0, 0.8)',
+              pointerEvents: 'auto',
             }}
             onMouseOver={(e) => {
               e.target.style.transform = 'scale(1.08)';
