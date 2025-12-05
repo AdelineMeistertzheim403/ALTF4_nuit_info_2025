@@ -60,11 +60,21 @@ app.post('/api/scores', async (req, res) => {
   }
   
   try {
+    // Insérer le nouveau score
     const result = await db.insert(scores).values({ pseudo, score });
+    const insertedId = result[0].insertId;
+    
+    // Récupérer tous les scores triés pour calculer le rang
+    const allScores = await db.select().from(scores).orderBy(desc(scores.score));
+    
+    // Trouver le rang du score inséré
+    const rang = allScores.findIndex(s => s.id === insertedId) + 1;
+    
     res.status(201).json({ 
-      id: result[0].insertId,
+      id: insertedId,
       pseudo, 
       score,
+      rang,
       message: 'Score enregistré avec succès' 
     });
   } catch (error) {
