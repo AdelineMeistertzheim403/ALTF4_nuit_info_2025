@@ -35,7 +35,7 @@ export default function AdminLogin() {
       if (isCorrect) {
         setError(false);
         setInput([]);
-        navigate("/admin/conclusion");
+        navigate("/admin");
       } else {
         setError(true);
         setInput([]);

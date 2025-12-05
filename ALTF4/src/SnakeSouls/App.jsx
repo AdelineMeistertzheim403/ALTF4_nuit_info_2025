@@ -1,7 +1,11 @@
 // Composant principal de l'application Snake
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { WareZone } from './components/WareZone';
 import backgroundImage from './assets/images/snakesouls.webp';
+import youDiedImage from './assets/images/youdied.png';
+import menuMusic from './assets/sounds/Création_Vidéo_SnakeSouls_Rétro_Pixel.mp3';
+import deathSound from './assets/sounds/dark-souls-you-died-sound-effect_hm5sYFG(1).mp3';
+import { useSound } from './hooks/useSound';
 import '../index.css';
 
 const SnakeSoulsApp = () => {
@@ -10,8 +14,23 @@ const SnakeSoulsApp = () => {
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
   const [isGameOver, setIsGameOver] = useState(false);
+  const [gameKey, setGameKey] = useState(0);
+
+  // Sons du jeu
+  const menuMusicSound = useSound(menuMusic, { loop: false, volume: 0.3 });
+  const deathSoundEffect = useSound(deathSound, { volume: 0.5 });
+
+  // Jouer la musique de menu au chargement
+  useEffect(() => {
+    if (!gameStarted) {
+      menuMusicSound.play();
+    } else {
+      menuMusicSound.stop();
+    }
+  }, [gameStarted]);
 
   const startGame = () => {
+    menuMusicSound.stop();
     setGameStarted(true);
     setIsGameOver(false);
     setScore(0);
@@ -24,8 +43,13 @@ const SnakeSoulsApp = () => {
   }, []);
 
   const handleGameOver = useCallback(() => {
-    setIsGameOver(true);
-  }, []);
+    setIsGameOver(prev => {
+      if (!prev) {
+        deathSoundEffect.play();
+      }
+      return true;
+    });
+  }, [deathSoundEffect]);
 
   const resetGame = () => {
     setGameStarted(false);
@@ -33,6 +57,15 @@ const SnakeSoulsApp = () => {
     setScore(0);
     setLives(3);
     setIsPaused(false);
+    menuMusicSound.play();
+  };
+
+  const restartGame = () => {
+    setIsGameOver(false);
+    setScore(0);
+    setLives(3);
+    setIsPaused(false);
+    setGameKey(prev => prev + 1);
   };
 
   // Écran de démarrage
@@ -122,6 +155,7 @@ const SnakeSoulsApp = () => {
   // Zone de jeu avec WareZone
   return (
     <WareZone
+      key={gameKey}
       onScoreChange={handleScoreChange}
       onGameOver={handleGameOver}
       isPaused={isPaused}
@@ -176,26 +210,69 @@ const SnakeSoulsApp = () => {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          background: 'rgba(0, 0, 0, 0.8)',
+          background: '#000',
+          zIndex: 1000,
+          pointerEvents: 'auto',
         }}>
-          <h2 style={{ color: '#EF4444', fontSize: '3rem', marginBottom: '20px' }}>
-            GAME OVER
-          </h2>
-          <p style={{ fontSize: '1.5rem', marginBottom: '30px', color: 'white' }}>
+          {/* You Died background image */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundImage: `url(${youDiedImage})`,
+            backgroundSize: 'contain',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            opacity: 0.9,
+            zIndex: 0,
+          }} />
+
+          <p style={{ 
+            fontSize: '1.5rem', 
+            marginBottom: '30px', 
+            color: '#d4af37',
+            position: 'relative',
+            zIndex: 1,
+            fontFamily: 'Georgia, serif',
+            textShadow: '2px 2px 8px rgba(0, 0, 0, 0.9)',
+            marginTop: '500px'
+          }}>
             Score Final: {score}
           </p>
           <button
-            onClick={resetGame}
+            onClick={restartGame}
             style={{
-              padding: '15px 40px',
-              fontSize: '1.2rem',
-              fontWeight: 'bold',
-              color: 'white',
-              background: 'linear-gradient(135deg, #60A5FA 0%, #3B82F6 100%)',
-              border: 'none',
-              borderRadius: '8px',
+              padding: '20px 50px',
+              fontSize: '1.5rem',
+              fontWeight: '600',
+              letterSpacing: '2px',
+              color: '#d4af37',
+              background: 'linear-gradient(180deg, rgba(40, 40, 40, 0.9) 0%, rgba(20, 20, 20, 0.95) 100%)',
+              border: '3px solid #6b5d47',
+              borderRadius: '0',
               cursor: 'pointer',
-              boxShadow: '0 4px 8px rgba(96, 165, 250, 0.3)'
+              boxShadow: 'inset 0 0 20px rgba(0, 0, 0, 0.8), 0 0 30px rgba(212, 175, 55, 0.3)',
+              transition: 'all 0.4s ease',
+              position: 'relative',
+              zIndex: 1,
+              textTransform: 'uppercase',
+              fontFamily: 'Georgia, serif',
+              textShadow: '0 0 10px rgba(212, 175, 55, 0.5), 2px 2px 4px rgba(0, 0, 0, 0.8)',
+              pointerEvents: 'auto',
+            }}
+            onMouseOver={(e) => {
+              e.target.style.transform = 'scale(1.08)';
+              e.target.style.color = '#ffecb3';
+              e.target.style.borderColor = '#d4af37';
+              e.target.style.boxShadow = 'inset 0 0 25px rgba(0, 0, 0, 0.9), 0 0 50px rgba(212, 175, 55, 0.6)';
+            }}
+            onMouseOut={(e) => {
+              e.target.style.transform = 'scale(1)';
+              e.target.style.color = '#d4af37';
+              e.target.style.borderColor = '#6b5d47';
+              e.target.style.boxShadow = 'inset 0 0 20px rgba(0, 0, 0, 0.8), 0 0 30px rgba(212, 175, 55, 0.3)';
             }}
           >
             REJOUER

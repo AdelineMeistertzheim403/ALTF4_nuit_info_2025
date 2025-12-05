@@ -52,6 +52,10 @@ export function useCanvas() {
         // Récupérer le contexte et scaler pour le DPR
         const context = canvas.getContext('2d');
         context.scale(dpr, dpr);
+        
+        // Améliorer la qualité de rendu des images
+        context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = 'high';
 
         setCtx(context);
         setDimensions({ width: displayWidth, height: displayHeight });
