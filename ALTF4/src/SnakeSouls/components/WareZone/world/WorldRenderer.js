@@ -1,13 +1,13 @@
 /**
  * WorldRenderer.js
- * 
+ *
  * Responsable du rendu du monde (sol).
- * Dessine les tuiles visibles avec leurs transformations.
- * 
- * Séparation des responsabilités :
- * - TileSet : charge les images
- * - TileMap : génère les données des tuiles
- * - WorldRenderer : dessine les tuiles à l'écran
+ * Dessine les tuiles visibles avec un effet naturel et organique.
+ *
+ * Techniques utilisées :
+ * - Scatter : plusieurs passes de tuiles décalées
+ * - Overlap : les tuiles se chevauchent légèrement
+ * - Variations : taille, rotation, opacité aléatoires
  */
 
 export class WorldRenderer {
@@ -18,15 +18,28 @@ export class WorldRenderer {
   constructor(tileMap, tileSet) {
     this.tileMap = tileMap;
     this.tileSet = tileSet;
-    
+
     // Options de rendu
     this.debug = false;
     this.showGrid = false;
+
+    // Paramètres pour le rendu naturel
+    this.overlap = 0.15; // 15% de chevauchement entre tuiles
+    this.scatterLayers = 2; // Nombre de couches de tuiles
+    this.scatterOffset = 0.3; // Décalage max des couches (en % de tileSize)
   }
 
   /**
-   * Dessine toutes les tuiles visibles
-   * 
+   * Génère un nombre pseudo-aléatoire déterministe
+   */
+  seededRandom(x, y, offset = 0) {
+    const n = Math.sin((x + offset) * 12.9898 + (y + offset) * 78.233) * 43758.5453;
+    return n - Math.floor(n);
+  }
+
+  /**
+   * Dessine toutes les tuiles visibles avec effet naturel
+   *
    * @param {CanvasRenderingContext2D} ctx - Contexte de dessin
    * @param {Camera} camera - Caméra pour la conversion world→screen
    */
@@ -39,14 +52,16 @@ export class WorldRenderer {
 
     // Récupérer les bounds de la caméra
     const bounds = camera.getBounds();
-    
+
     // Récupérer les tuiles visibles
     const tiles = this.tileMap.getVisibleTiles(bounds);
-    
-    // Dessiner chaque tuile
-    tiles.forEach(tile => {
-      this.renderTile(ctx, camera, tile);
-    });
+
+    // Dessiner plusieurs couches pour un effet plus naturel
+    for (let layer = 0; layer < this.scatterLayers; layer++) {
+      tiles.forEach(tile => {
+        this.renderTileNatural(ctx, camera, tile, layer);
+      });
+    }
 
     // Debug : grille
     if (this.showGrid) {
@@ -55,38 +70,82 @@ export class WorldRenderer {
   }
 
   /**
-   * Dessine une tuile individuelle
-   * 
+   * Dessine une tuile avec effet naturel (scatter, overlap, variations)
+   *
    * @param {CanvasRenderingContext2D} ctx
    * @param {Camera} camera
    * @param {Object} tile - Données de la tuile
+   * @param {number} layer - Couche de rendu (0 = base, 1+ = scatter)
    */
-  renderTile(ctx, camera, tile) {
+  renderTileNatural(ctx, camera, tile, layer) {
     const texture = this.tileSet.getTexture(tile.textureId);
-    
+
     // Fallback si texture non trouvée
     if (!texture) {
-      this.renderFallbackTile(ctx, camera, tile);
+      if (layer === 0) {
+        this.renderFallbackTile(ctx, camera, tile);
+      }
       return;
     }
 
-    const tileSize = this.tileMap.tileSize;
-    
+    const baseSize = this.tileMap.tileSize;
+
+    // Taille avec overlap (légèrement plus grand pour couvrir les bords)
+    const overlapSize = baseSize * (1 + this.overlap);
+
+    // Décalage pour centrer l'overlap
+    const overlapOffset = (overlapSize - baseSize) / 2;
+
+    // Position de base
+    let worldX = tile.worldX - overlapOffset;
+    let worldY = tile.worldY - overlapOffset;
+
+    // Pour les couches supplémentaires, ajouter un décalage aléatoire
+    let opacity = 1;
+    let sizeMultiplier = 1;
+
+    if (layer > 0) {
+      // Décalage pseudo-aléatoire basé sur la position
+      const offsetX = (this.seededRandom(tile.x, tile.y, layer * 100) - 0.5) * baseSize * this.scatterOffset;
+      const offsetY = (this.seededRandom(tile.x, tile.y, layer * 200) - 0.5) * baseSize * this.scatterOffset;
+
+      worldX += offsetX;
+      worldY += offsetY;
+
+      // Opacité réduite pour les couches supérieures
+      opacity = 0.3 + this.seededRandom(tile.x, tile.y, layer * 300) * 0.3;
+
+      // Légère variation de taille
+      sizeMultiplier = 0.9 + this.seededRandom(tile.x, tile.y, layer * 400) * 0.2;
+    }
+
+    const finalSize = overlapSize * sizeMultiplier;
+
     // Convertir position monde → écran
-    const screenPos = camera.worldToScreen(tile.worldX, tile.worldY);
-    
+    const screenPos = camera.worldToScreen(worldX, worldY);
+
     // Centre de la tuile (pour les rotations)
-    const centerX = screenPos.x + tileSize / 2;
-    const centerY = screenPos.y + tileSize / 2;
+    const centerX = screenPos.x + finalSize / 2;
+    const centerY = screenPos.y + finalSize / 2;
+
+    // Rotation plus variée (pas seulement 90°)
+    let rotation = tile.rotation;
+    if (layer > 0) {
+      // Ajouter une rotation supplémentaire pour les couches scatter
+      rotation += (this.seededRandom(tile.x, tile.y, layer * 500) - 0.5) * 0.5;
+    }
 
     // Sauvegarder l'état du contexte
     ctx.save();
 
+    // Appliquer l'opacité
+    ctx.globalAlpha = opacity;
+
     // Appliquer les transformations
     ctx.translate(centerX, centerY);
-    ctx.rotate(tile.rotation);
+    ctx.rotate(rotation);
     ctx.scale(tile.flipX ? -1 : 1, tile.flipY ? -1 : 1);
-    
+
     // Variation de luminosité
     if (tile.brightness !== 1) {
       ctx.filter = `brightness(${tile.brightness})`;
@@ -95,20 +154,21 @@ export class WorldRenderer {
     // Dessiner la texture
     ctx.drawImage(
       texture,
-      -tileSize / 2,
-      -tileSize / 2,
-      tileSize,
-      tileSize
+      -finalSize / 2,
+      -finalSize / 2,
+      finalSize,
+      finalSize
     );
 
-    // Reset filter
+    // Reset
     ctx.filter = 'none';
+    ctx.globalAlpha = 1;
 
     // Restaurer l'état
     ctx.restore();
 
-    // Debug : afficher les infos de tuile
-    if (this.debug) {
+    // Debug : afficher les infos de tuile (seulement layer 0)
+    if (this.debug && layer === 0) {
       this.renderTileDebug(ctx, screenPos, tile);
     }
   }
