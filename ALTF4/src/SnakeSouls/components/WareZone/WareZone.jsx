@@ -3,14 +3,13 @@
  *
  * Composant principal de la zone de jeu.
  *
- * Responsabilités :
- * - Afficher le canvas fullscreen
- * - Gérer la boucle de jeu (update/render)
- * - Coordonner la caméra
- * - Dessiner la grille de fond infinie
- *
- * Usage :
- * <WareZone onScoreChange={setScore} onGameOver={handleGameOver} />
+ * SYSTÈME DE GAMEPLAY :
+ * - Collision basée sur la taille (le plus grand gagne)
+ * - Système de vies (3 vies, bonus BIRD pour +1 vie)
+ * - Système de points (+X quand détruit ennemi, -50 quand perd vie)
+ * - Débris récupérables quand un snake explose
+ * - Difficulté progressive basée sur le temps de survie
+ * - Malus (logos propriétaires = effets négatifs)
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
@@ -21,8 +20,12 @@ import { createWorld } from './world';
 import InputManager from '../../game/core/InputManager';
 import { spriteLoader } from '../../game/data/wasteSprites';
 import { bonusSpriteLoader } from '../../game/data/bonusSprites';
+import { malusSpriteLoader } from '../../game/data/malusSprites';
 import CollisionSystem from '../../game/systems/CollisionSystem';
 import { EnemyManager } from '../../game/systems/EnemyManager';
+import { DebrisSystem } from '../../game/systems/DebrisSystem';
+import { DifficultySystem } from '../../game/systems/DifficultySystem';
+import { MALUS_EFFECT_TYPES } from '../../game/data/malus';
 import './WareZone.css';
 
 // ============================================
@@ -32,28 +35,33 @@ const CONFIG = {
     // Couleurs
     BACKGROUND_COLOR: '#0a0a0f',
     GRID_COLOR: 'rgba(255, 255, 255, 0.03)',
-    GRID_SIZE: 50,  // Taille des cases de la grille
+    GRID_SIZE: 50,
 
     // Déchets
-    WASTE_COUNT: 20,           // Nombre de déchets sur la map
-    WASTE_SIZE: 40,            // Taille des sprites de déchets
-    WASTE_SPAWN_RADIUS: 1500,  // Rayon de spawn autour du joueur
-    WASTE_MIN_DISTANCE: 200,   // Distance minimale de spawn (éviter de spawn trop près)
-    PICKUP_DISTANCE: 35,       // Distance pour ramasser un déchet
+    WASTE_COUNT: 20,
+    WASTE_SIZE: 40,
+    WASTE_SPAWN_RADIUS: 1500,
+    WASTE_MIN_DISTANCE: 200,
+    PICKUP_DISTANCE: 35,
 
     // Bonus
-    BONUS_COUNT: 6,            // Nombre de bonus sur la map
-    BONUS_SIZE: 50,            // Taille des sprites de bonus
-    BONUS_SPAWN_RADIUS: 1500,  // Rayon de spawn autour du joueur
-    BONUS_MIN_DISTANCE: 300,   // Distance minimale de spawn
-    BONUS_PICKUP_DISTANCE: 40, // Distance pour ramasser un bonus
+    BONUS_COUNT: 6,
+    BONUS_SIZE: 50,
+    BONUS_SPAWN_RADIUS: 1500,
+    BONUS_MIN_DISTANCE: 300,
+    BONUS_PICKUP_DISTANCE: 40,
 
     // Snake
-    SEGMENT_SPACING: 35,       // Espacement entre les segments (augmenté pour plus d'air)
-    SEGMENT_SIZE: 30,          // Taille des segments
+    SEGMENT_SPACING: 35,
+    SEGMENT_SIZE: 30,
+
+    // Gameplay
+    INITIAL_LIVES: 3,
+    POINTS_PER_SEGMENT: 10,
+    POINTS_LOST_ON_DEATH: 50,
 
     // Debug
-    DEBUG: true,  // Affiche des infos de debug
+    DEBUG: true,
 };
 
 // ============================================
@@ -62,6 +70,7 @@ const CONFIG = {
 export function WareZone({
                              onScoreChange,
                              onGameOver,
+                             onLivesChange,
                              isPaused = false,
                              debug = false,
                              children
@@ -69,50 +78,94 @@ export function WareZone({
     // ---- Hooks ----
     const { canvasRef, ctx, dimensions, fill } = useCanvas();
 
-    // ---- Refs (persistantes entre les renders) ----
+    // ---- Refs ----
     const cameraRef = useRef(new Camera());
     const inputRef = useRef(null);
     const playerPositionRef = useRef({ x: 0, y: 0 });
-    const playerAngleRef = useRef(0); // Angle en radians
-    const playerSpeedRef = useRef(150); // Pixels par seconde
-    const currentSpacingRef = useRef(35); // Espacement actuel (dynamique)
-
-    // Historique des positions pour les segments
+    const playerAngleRef = useRef(0);
+    const playerSpeedRef = useRef(150);
+    const currentSpacingRef = useRef(35);
     const positionHistoryRef = useRef([]);
-
-    // Segments du snake (déchets ramassés)
-    const segmentsRef = useRef([]); // { x, y, sprite, image }
-
-    // Déchets sur la map
-    const wastesRef = useRef([]); // { x, y, sprite, image }
+    const segmentsRef = useRef([]);
+    const wastesRef = useRef([]);
     const wastesInitializedRef = useRef(false);
-
-    // Bonus sur la map
-    const bonusesRef = useRef([]); // { x, y, spriteData, image, active }
+    const bonusesRef = useRef([]);
     const bonusesInitializedRef = useRef(false);
-    const activeBonusEffectsRef = useRef([]); // { effect, value, endTime }
-    const bonusPickupEffectsRef = useRef([]); // { x, y, color, startTime, duration }
-
-    // Monde (sol avec textures)
+    const activeBonusEffectsRef = useRef([]);
+    const bonusPickupEffectsRef = useRef([]);
     const worldRef = useRef(null);
     const worldInitializedRef = useRef(false);
+
+    // Système de débris
+    const debrisSystemRef = useRef(new DebrisSystem());
+
+    // Système de difficulté
+    const difficultySystemRef = useRef(new DifficultySystem());
 
     // Ennemis
     const enemyManagerRef = useRef(new EnemyManager({
         maxEnemies: 3,
-        spawnInterval: 8,
+        spawnInterval: 10,
         initialDelay: 5,
         spawnRadius: 800,
         minSpawnDistance: 400
     }));
 
+    // Malus
+    const malusesRef = useRef([]);
+    const malusesInitializedRef = useRef(false);
+    const activeMalusEffectsRef = useRef([]);
+    const randomTurnTimerRef = useRef(0);
+
     // ---- State ----
     const [score, setScore] = useState(0);
-    const [gameState, setGameState] = useState('playing'); // 'playing' | 'paused' | 'gameover'
+    const [lives, setLives] = useState(CONFIG.INITIAL_LIVES);
+    const [gameState, setGameState] = useState('playing');
     const [worldReady, setWorldReady] = useState(false);
+    const [survivalTime, setSurvivalTime] = useState('00:00');
+    const [difficultyLevel, setDifficultyLevel] = useState(1);
+
+    // Connecter le callback de destruction d'ennemi
+    useEffect(() => {
+        enemyManagerRef.current.onEnemyDestroyed = (enemy, segmentPositions) => {
+            debrisSystemRef.current.createFromSnake(enemy, segmentPositions);
+        };
+    }, []);
 
     // ============================================
-    // INITIALISATION DES DÉCHETS
+    // GESTION DES VIES ET GAME OVER
+    // ============================================
+    const loseLife = useCallback(() => {
+        setLives(prev => {
+            const newLives = prev - 1;
+            if (onLivesChange) onLivesChange(newLives);
+
+            if (newLives <= 0) {
+                setGameState('gameover');
+                if (onGameOver) onGameOver(score);
+            }
+
+            return newLives;
+        });
+
+        // Perdre des points
+        setScore(prev => {
+            const newScore = Math.max(0, prev - CONFIG.POINTS_LOST_ON_DEATH);
+            if (onScoreChange) onScoreChange(newScore);
+            return newScore;
+        });
+    }, [onLivesChange, onGameOver, onScoreChange, score]);
+
+    const gainLife = useCallback(() => {
+        setLives(prev => {
+            const newLives = prev + 1;
+            if (onLivesChange) onLivesChange(newLives);
+            return newLives;
+        });
+    }, [onLivesChange]);
+
+    // ============================================
+    // SPAWN FUNCTIONS
     // ============================================
     const spawnWasteAroundPlayer = useCallback((centerX, centerY) => {
         const angle = Math.random() * Math.PI * 2;
@@ -128,7 +181,6 @@ export function WareZone({
     }, []);
 
     const spawnWastes = useCallback(async () => {
-        // Charger tous les sprites
         await spriteLoader.loadAll();
 
         const wastes = [];
@@ -141,9 +193,6 @@ export function WareZone({
         wastesRef.current = wastes;
     }, [spawnWasteAroundPlayer]);
 
-    // ============================================
-    // INITIALISATION DES BONUS
-    // ============================================
     const spawnBonusAroundPlayer = useCallback((centerX, centerY) => {
         const angle = Math.random() * Math.PI * 2;
         const distance = CONFIG.BONUS_MIN_DISTANCE + Math.random() * (CONFIG.BONUS_SPAWN_RADIUS - CONFIG.BONUS_MIN_DISTANCE);
@@ -158,7 +207,6 @@ export function WareZone({
     }, []);
 
     const spawnBonuses = useCallback(async () => {
-        // Charger tous les sprites de bonus
         await bonusSpriteLoader.loadAll();
 
         const bonuses = [];
@@ -171,8 +219,29 @@ export function WareZone({
         bonusesRef.current = bonuses;
     }, [spawnBonusAroundPlayer]);
 
+    // Spawn de malus (selon difficulté)
+    const spawnMalusAroundPlayer = useCallback((centerX, centerY) => {
+        const angle = Math.random() * Math.PI * 2;
+        const distance = CONFIG.BONUS_MIN_DISTANCE + Math.random() * (CONFIG.BONUS_SPAWN_RADIUS - CONFIG.BONUS_MIN_DISTANCE);
+        const x = centerX + Math.cos(angle) * distance;
+        const y = centerY + Math.sin(angle) * distance;
+
+        const spriteData = malusSpriteLoader.getRandomSprite();
+        if (!spriteData) return null;
+
+        const image = new Image();
+        image.src = spriteData.src;
+
+        return { x, y, spriteData, image, active: true, isMalus: true };
+    }, []);
+
+    const initMaluses = useCallback(async () => {
+        await malusSpriteLoader.loadAll();
+        malusesRef.current = [];
+    }, []);
+
     // ============================================
-    // INITIALISATION DU MONDE (textures de sol)
+    // INITIALISATION DU MONDE
     // ============================================
     useEffect(() => {
         if (worldInitializedRef.current) return;
@@ -183,7 +252,7 @@ export function WareZone({
                 const world = await createWorld({ tileSize: 2048, seed: 42 });
                 worldRef.current = world;
                 setWorldReady(true);
-                console.log('[WareZone] World initialized with textures');
+                console.log('[WareZone] World initialized');
             } catch (error) {
                 console.error('[WareZone] Failed to initialize world:', error);
             }
@@ -196,56 +265,59 @@ export function WareZone({
     // INITIALISATION
     // ============================================
     useEffect(() => {
-        // Créer l'InputManager une seule fois
         if (!inputRef.current) {
             inputRef.current = new InputManager();
         }
 
-        // Spawner les déchets une seule fois
         if (!wastesInitializedRef.current) {
             spawnWastes();
             wastesInitializedRef.current = true;
         }
 
-        // Spawner les bonus une seule fois
         if (!bonusesInitializedRef.current) {
             spawnBonuses();
             bonusesInitializedRef.current = true;
         }
 
-        const camera = cameraRef.current;
+        if (!malusesInitializedRef.current) {
+            initMaluses();
+            malusesInitializedRef.current = true;
+        }
 
-        // La caméra suit la position du joueur
+        // Callback quand le niveau change
+        difficultySystemRef.current.onLevelChange = (newLevel, prevLevel) => {
+            setDifficultyLevel(newLevel.level);
+            console.log(`[WareZone] Difficulty changed: ${prevLevel?.name || 'N/A'} -> ${newLevel.name}`);
+        };
+
+        const camera = cameraRef.current;
         camera.setTarget(playerPositionRef.current);
         camera.resize(dimensions.width, dimensions.height);
         camera.centerOnTarget();
 
-        // Cleanup
+        // Notifier les vies initiales
+        if (onLivesChange) onLivesChange(CONFIG.INITIAL_LIVES);
+
         return () => {
             if (inputRef.current) {
                 inputRef.current.destroy();
                 inputRef.current = null;
             }
         };
-    }, [dimensions, spawnWastes, spawnBonuses]);
+    }, [dimensions, spawnWastes, spawnBonuses, initMaluses, onLivesChange]);
 
     // ============================================
-    // DESSIN DE LA GRILLE INFINIE
+    // DESSIN
     // ============================================
     const drawGrid = useCallback((ctx, camera) => {
         const { GRID_SIZE, GRID_COLOR } = CONFIG;
-
         ctx.strokeStyle = GRID_COLOR;
         ctx.lineWidth = 1;
 
-        // Calculer les bornes visibles
         const bounds = camera.getBounds();
-
-        // Trouver la première ligne de grille visible
         const startX = Math.floor(bounds.left / GRID_SIZE) * GRID_SIZE;
         const startY = Math.floor(bounds.top / GRID_SIZE) * GRID_SIZE;
 
-        // Dessiner les lignes verticales
         for (let x = startX; x <= bounds.right; x += GRID_SIZE) {
             const screenPos = camera.worldToScreen(x, 0);
             ctx.beginPath();
@@ -254,7 +326,6 @@ export function WareZone({
             ctx.stroke();
         }
 
-        // Dessiner les lignes horizontales
         for (let y = startY; y <= bounds.bottom; y += GRID_SIZE) {
             const screenPos = camera.worldToScreen(0, y);
             ctx.beginPath();
@@ -264,13 +335,8 @@ export function WareZone({
         }
     }, [dimensions]);
 
-    // ============================================
-    // DESSIN DE L'ORIGINE (debug)
-    // ============================================
     const drawOrigin = useCallback((ctx, camera) => {
         const origin = camera.worldToScreen(0, 0);
-
-        // Croix à l'origine
         ctx.strokeStyle = 'rgba(239, 68, 68, 0.5)';
         ctx.lineWidth = 2;
 
@@ -284,38 +350,33 @@ export function WareZone({
         ctx.lineTo(origin.x, origin.y + 20);
         ctx.stroke();
 
-        // Label
         ctx.fillStyle = 'rgba(239, 68, 68, 0.8)';
         ctx.font = '12px monospace';
         ctx.fillText('(0, 0)', origin.x + 5, origin.y - 5);
     }, []);
 
-    // ============================================
-    // DESSIN DES INFOS DEBUG
-    // ============================================
     const drawDebugInfo = useCallback((ctx, camera, deltaTime) => {
         const fps = Math.round(1 / deltaTime);
         const player = playerPositionRef.current;
+        const playerSize = segmentsRef.current.length + 1;
 
         ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
         ctx.font = '12px monospace';
 
         const lines = [
             `FPS: ${fps}`,
-            `Camera: (${Math.round(camera.x)}, ${Math.round(camera.y)})`,
-            `Player: (${Math.round(player.x)}, ${Math.round(player.y)})`,
-            `Viewport: ${dimensions.width}x${dimensions.height}`,
-            `Wastes: ${wastesRef.current.length}`,
-            `Bonuses: ${bonusesRef.current.length}`,
-            `Segments: ${segmentsRef.current.length}`,
-            `Active Effects: ${activeBonusEffectsRef.current.map(e => e.effect).join(', ') || 'None'}`,
+            `Player Size: ${playerSize}`,
+            `Lives: ${lives}`,
+            `Score: ${score}`,
             `Enemies: ${enemyManagerRef.current.enemies.length}`,
+            `Debris: ${debrisSystemRef.current.count}`,
+            `Active Effects: ${activeBonusEffectsRef.current.map(e => e.effect).join(', ') || 'None'}`,
         ];
 
         lines.forEach((line, i) => {
-            ctx.fillText(line, 10, dimensions.height - 105 + (i * 15));
+            ctx.fillText(line, 10, dimensions.height - 90 + (i * 15));
         });
-    }, [dimensions]);
+    }, [dimensions, lives, score]);
 
     // ============================================
     // BOUCLE DE JEU
@@ -325,128 +386,221 @@ export function WareZone({
 
         const camera = cameraRef.current;
         const input = inputRef.current;
+        const debrisSystem = debrisSystemRef.current;
+        const difficultySystem = difficultySystemRef.current;
+        const enemyManager = enemyManagerRef.current;
+        const now = Date.now();
 
         // ---- UPDATE ----
 
-        // Rotation avec les flèches gauche/droite
-        const rotationSpeed = 3; // Radians par seconde
-        if (input && input.isKeyPressed('ArrowLeft')) {
+        // ---- SYSTÈME DE DIFFICULTÉ ----
+        difficultySystem.update(deltaTime);
+        setSurvivalTime(difficultySystem.getFormattedTime());
+
+        // Mettre à jour les paramètres des ennemis selon la difficulté
+        enemyManager.updateDifficultyParams(difficultySystem.getEnemyParams());
+
+        // ---- SPAWN MALUS (selon difficulté) ----
+        if (difficultySystem.areMalusEnabled()) {
+            const malusSpawnRate = difficultySystem.getMalusSpawnRate();
+            const targetMalusCount = Math.floor(CONFIG.BONUS_COUNT * malusSpawnRate);
+
+            // Spawner des malus si nécessaire
+            if (malusesRef.current.length < targetMalusCount) {
+                const newMalus = spawnMalusAroundPlayer(playerPositionRef.current.x, playerPositionRef.current.y);
+                if (newMalus) {
+                    malusesRef.current.push(newMalus);
+                }
+            }
+        }
+
+        // ---- EFFETS MALUS ACTIFS ----
+        // Nettoyer les effets malus expirés
+        activeMalusEffectsRef.current = activeMalusEffectsRef.current.filter(effect => effect.endTime > now);
+
+        // Vérifier si les contrôles sont inversés
+        const invertControls = activeMalusEffectsRef.current.some(e => e.effect === MALUS_EFFECT_TYPES.INVERT_CONTROLS);
+
+        // Vérifier si le joueur est ralenti (malus Apple)
+        const slowMalus = activeMalusEffectsRef.current.find(e => e.effect === MALUS_EFFECT_TYPES.SLOW_PLAYER);
+
+        // Vérifier si tout est ralenti (malus Chrome)
+        const slowAllMalus = activeMalusEffectsRef.current.find(e => e.effect === MALUS_EFFECT_TYPES.SLOW_ALL);
+
+        // Vérifier si les bonus sont bloqués (malus Huawei)
+        const bonusBlocked = activeMalusEffectsRef.current.some(e => e.effect === MALUS_EFFECT_TYPES.BLOCK_BONUS);
+
+        // Effet random turn (Samsung)
+        const randomTurnMalus = activeMalusEffectsRef.current.find(e => e.effect === MALUS_EFFECT_TYPES.RANDOM_TURN);
+        if (randomTurnMalus) {
+            randomTurnTimerRef.current += deltaTime;
+            if (randomTurnTimerRef.current > randomTurnMalus.value) {
+                randomTurnTimerRef.current = 0;
+                // Tourner aléatoirement
+                playerAngleRef.current += (Math.random() - 0.5) * Math.PI * 0.5;
+            }
+        }
+
+        // Rotation (avec inversion possible)
+        const rotationSpeed = 3;
+        const leftKey = invertControls ? 'ArrowRight' : 'ArrowLeft';
+        const rightKey = invertControls ? 'ArrowLeft' : 'ArrowRight';
+
+        if (input && input.isKeyPressed(leftKey)) {
             playerAngleRef.current -= rotationSpeed * deltaTime;
         }
-        if (input && input.isKeyPressed('ArrowRight')) {
+        if (input && input.isKeyPressed(rightKey)) {
             playerAngleRef.current += rotationSpeed * deltaTime;
         }
 
-        // Vitesse avec flèches haut/bas
+        // Vitesse
         let currentSpeed = playerSpeedRef.current;
-        let targetSpacing = CONFIG.SEGMENT_SPACING; // Espacement cible
-        
+        let targetSpacing = CONFIG.SEGMENT_SPACING;
+
         if (input && input.isKeyPressed('ArrowUp')) {
-            currentSpeed = 250; // Accélérer
-            targetSpacing = CONFIG.SEGMENT_SPACING * 1.3; // Augmenter l'espacement de 30%
+            currentSpeed = 250;
+            targetSpacing = CONFIG.SEGMENT_SPACING * 1.3;
         } else if (input && input.isKeyPressed('ArrowDown')) {
-            currentSpeed = 80; // Ralentir
-            targetSpacing = CONFIG.SEGMENT_SPACING * 0.8; // Réduire légèrement l'espacement
+            currentSpeed = 80;
+            targetSpacing = CONFIG.SEGMENT_SPACING * 0.8;
         }
 
-        // Appliquer les bonus de vitesse actifs
+        // Bonus de vitesse
         const speedBonus = activeBonusEffectsRef.current.find(e => e.effect === 'speed');
         if (speedBonus) {
             currentSpeed *= speedBonus.value;
         }
 
-        // Interpolation douce de l'espacement (lerp)
-        const lerpSpeed = 5; // Vitesse de transition (plus grand = plus rapide)
+        // Malus de vitesse (Apple - slow player)
+        if (slowMalus) {
+            currentSpeed *= slowMalus.value;
+        }
+
+        // Malus global (Chrome - slow all)
+        if (slowAllMalus) {
+            currentSpeed *= slowAllMalus.value;
+        }
+
+        // Interpolation de l'espacement
+        const lerpSpeed = 5;
         currentSpacingRef.current += (targetSpacing - currentSpacingRef.current) * lerpSpeed * deltaTime;
 
-        // Déplacer le joueur dans la direction de l'angle
+        // Déplacer le joueur
         playerPositionRef.current.x += Math.cos(playerAngleRef.current) * currentSpeed * deltaTime;
         playerPositionRef.current.y += Math.sin(playerAngleRef.current) * currentSpeed * deltaTime;
 
-        // Sauvegarder la position dans l'historique (pour les segments)
+        // Historique des positions
         positionHistoryRef.current.unshift({
             x: playerPositionRef.current.x,
             y: playerPositionRef.current.y,
             angle: playerAngleRef.current
         });
 
-        // Limiter la taille de l'historique basée sur l'espacement dynamique
         const maxHistory = Math.ceil((segmentsRef.current.length + 1) * currentSpacingRef.current * 1.5) + 100;
         if (positionHistoryRef.current.length > maxHistory) {
             positionHistoryRef.current.pop();
         }
 
-        // ---- COLLISION AVEC LES DÉCHETS ----
         const playerPos = { x: playerPositionRef.current.x, y: playerPositionRef.current.y };
-        
+        const isInvincible = activeBonusEffectsRef.current.some(e => e.effect === 'invincible');
+
+        // ---- COLLISION AVEC LES DÉCHETS ----
         const { pickedWastes, remainingWastes } = CollisionSystem.checkWasteCollision(
             playerPos,
             wastesRef.current,
             CONFIG.PICKUP_DISTANCE
         );
 
-        // Traiter les déchets ramassés
         pickedWastes.forEach(waste => {
-            // Ajouter comme segment
             segmentsRef.current.push({
                 spriteData: waste.spriteData,
                 image: waste.image
             });
 
-            // Mettre à jour le score
-            setTimeout(() => {
-                setScore(prev => {
-                    // Vérifier si le bonus doublePoints est actif
-                    const doublePointsBonus = activeBonusEffectsRef.current.find(e => e.effect === 'doublePoints');
-                    const pointsMultiplier = doublePointsBonus ? doublePointsBonus.value : 1;
-                    const newScore = prev + (10 * pointsMultiplier);
-                    if (onScoreChange) onScoreChange(newScore);
-                    return newScore;
-                });
-            }, 0);
+            const doublePointsBonus = activeBonusEffectsRef.current.find(e => e.effect === 'doublePoints');
+            const multiplier = doublePointsBonus ? doublePointsBonus.value : 1;
 
-            // Spawner un nouveau déchet autour du joueur
-            const newWaste = spawnWasteAroundPlayer(
-                playerPositionRef.current.x,
-                playerPositionRef.current.y
-            );
+            setScore(prev => {
+                const newScore = prev + (CONFIG.POINTS_PER_SEGMENT * multiplier);
+                if (onScoreChange) onScoreChange(newScore);
+                return newScore;
+            });
+
+            const newWaste = spawnWasteAroundPlayer(playerPos.x, playerPos.y);
             wastesRef.current.push(newWaste);
         });
 
         wastesRef.current = remainingWastes;
 
-        // ---- EFFET MAGNETISM (ATTIRE LES DÉCHETS) ----
+        // ---- COLLISION AVEC LES DÉBRIS ----
+        const { picked: pickedDebris } = debrisSystem.checkCollision(playerPos.x, playerPos.y, 35);
+
+        pickedDebris.forEach(debris => {
+            // Ajouter un segment pour chaque débris ramassé
+            if (debris.sprite) {
+                segmentsRef.current.push({
+                    spriteData: debris.spriteData || { type: 'image' },
+                    image: debris.sprite
+                });
+            } else {
+                // Créer un segment avec une image aléatoire
+                const randomWaste = wastesRef.current[Math.floor(Math.random() * wastesRef.current.length)];
+                if (randomWaste) {
+                    segmentsRef.current.push({
+                        spriteData: randomWaste.spriteData,
+                        image: randomWaste.image
+                    });
+                }
+            }
+
+            // Points pour ramasser des débris
+            setScore(prev => {
+                const newScore = prev + (debris.value * 5);
+                if (onScoreChange) onScoreChange(newScore);
+                return newScore;
+            });
+        });
+
+        // ---- EFFET MAGNETISM ----
         const magnetismBonus = activeBonusEffectsRef.current.find(e => e.effect === 'magnetism');
         if (magnetismBonus) {
-            const magnetRadius = magnetismBonus.value; // Rayon d'attraction
-            const magnetStrength = 200; // Vitesse d'attraction (pixels/sec)
-            
+            const magnetRadius = magnetismBonus.value;
+            const magnetStrength = 200;
+
             wastesRef.current.forEach(waste => {
                 const dx = waste.x - playerPos.x;
                 const dy = waste.y - playerPos.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
-                
-                // Si le déchet est dans le rayon d'attraction
+
                 if (distance < magnetRadius && distance > CONFIG.PICKUP_DISTANCE) {
-                    // Calculer la direction vers le joueur
                     const dirX = -dx / distance;
                     const dirY = -dy / distance;
-                    
-                    // Déplacer le déchet vers le joueur
                     waste.x += dirX * magnetStrength * deltaTime;
                     waste.y += dirY * magnetStrength * deltaTime;
+                }
+            });
+
+            // Attirer aussi les débris
+            debrisSystem.debris.forEach(debris => {
+                const dx = debris.x - playerPos.x;
+                const dy = debris.y - playerPos.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < magnetRadius && distance > 35) {
+                    const dirX = -dx / distance;
+                    const dirY = -dy / distance;
+                    debris.x += dirX * magnetStrength * deltaTime;
+                    debris.y += dirY * magnetStrength * deltaTime;
                 }
             });
         }
 
         // ---- REPOSITIONNER LES DÉCHETS TROP LOIN ----
-        // Vérifier si des déchets sont trop loin du joueur et les repositionner
         wastesRef.current.forEach(waste => {
             const dx = waste.x - playerPos.x;
             const dy = waste.y - playerPos.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
-            
-            // Si le déchet est hors du rayon de spawn, le repositionner
+
             if (distance > CONFIG.WASTE_SPAWN_RADIUS) {
                 const newWaste = spawnWasteAroundPlayer(playerPos.x, playerPos.y);
                 waste.x = newWaste.x;
@@ -457,9 +611,6 @@ export function WareZone({
         });
 
         // ---- COLLISION AVEC SOI-MÊME ----
-        // Vérifier si le joueur est invincible
-        const isInvincible = activeBonusEffectsRef.current.some(e => e.effect === 'invincible');
-        
         const collisionIndex = !isInvincible ? CollisionSystem.checkSelfCollision(
             playerPos,
             segmentsRef.current,
@@ -469,78 +620,60 @@ export function WareZone({
         ) : null;
 
         if (collisionIndex !== null) {
-            // Couper le serpent à cet endroit
-            const segmentsLost = segmentsRef.current.length - collisionIndex;
             segmentsRef.current = segmentsRef.current.slice(0, collisionIndex);
-
-            // Soustraire les points (10 points par segment perdu)
-            const pointsLost = segmentsLost * 10;
-
-            setTimeout(() => {
-                setScore(prev => {
-                    const newScore = Math.max(0, prev - pointsLost);
-                    if (onScoreChange) onScoreChange(newScore);
-                    return newScore;
-                });
-            }, 0);
         }
 
         // ---- COLLISION AVEC LES BONUS ----
-        const { pickedWastes: pickedBonuses, remainingWastes: remainingBonuses } = CollisionSystem.checkWasteCollision(
+        const { pickedWastes: pickedBonuses } = CollisionSystem.checkWasteCollision(
             playerPos,
             bonusesRef.current.filter(b => b.active),
             CONFIG.BONUS_PICKUP_DISTANCE
         );
 
-        // Traiter les bonus ramassés
         pickedBonuses.forEach(bonus => {
             const bonusData = bonus.spriteData.data;
-            
-            // Créer un effet visuel au moment du ramassage
+
             bonusPickupEffectsRef.current.push({
                 x: bonus.x,
                 y: bonus.y,
                 color: bonusData.color,
                 startTime: Date.now(),
-                duration: 800 // ms
+                duration: 800
             });
-            
-            // Ajouter des points
-            setTimeout(() => {
-                setScore(prev => {
-                    // Vérifier si le bonus doublePoints est actif
-                    const doublePointsBonus = activeBonusEffectsRef.current.find(e => e.effect === 'doublePoints');
-                    const pointsMultiplier = doublePointsBonus ? doublePointsBonus.value : 1;
-                    const newScore = prev + (bonusData.points * pointsMultiplier);
-                    if (onScoreChange) onScoreChange(newScore);
-                    return newScore;
-                });
-            }, 0);
 
-            // Appliquer l'effet du bonus
-            if (bonusData.duration > 0) {
-                // Effet temporaire
+            // Points du bonus
+            const doublePointsBonus = activeBonusEffectsRef.current.find(e => e.effect === 'doublePoints');
+            const multiplier = doublePointsBonus ? doublePointsBonus.value : 1;
+
+            setScore(prev => {
+                const newScore = prev + (bonusData.points * multiplier);
+                if (onScoreChange) onScoreChange(newScore);
+                return newScore;
+            });
+
+            // Effet du bonus
+            if (bonusData.effect === 'extraLife') {
+                // BIRD bonus - +1 vie
+                gainLife();
+            } else if (bonusData.duration > 0) {
                 activeBonusEffectsRef.current.push({
                     effect: bonusData.effect,
                     value: bonusData.value,
                     endTime: Date.now() + bonusData.duration
                 });
-            } else {
-                // Effet permanent (comme grow)
-                if (bonusData.effect === 'grow') {
-                    for (let i = 0; i < bonusData.value; i++) {
-                        const randomWaste = wastesRef.current[Math.floor(Math.random() * wastesRef.current.length)];
-                        if (randomWaste) {
-                            segmentsRef.current.push({
-                                spriteData: randomWaste.spriteData,
-                                image: randomWaste.image
-                            });
-                        }
+            } else if (bonusData.effect === 'grow') {
+                for (let i = 0; i < bonusData.value; i++) {
+                    const randomWaste = wastesRef.current[Math.floor(Math.random() * wastesRef.current.length)];
+                    if (randomWaste) {
+                        segmentsRef.current.push({
+                            spriteData: randomWaste.spriteData,
+                            image: randomWaste.image
+                        });
                     }
                 }
             }
 
-            // Respawn le bonus à un nouvel emplacement
+            // Respawn bonus
             const newBonus = spawnBonusAroundPlayer(playerPos.x, playerPos.y);
             bonus.x = newBonus.x;
             bonus.y = newBonus.y;
@@ -548,8 +681,86 @@ export function WareZone({
             bonus.image = newBonus.image;
         });
 
+        // ---- COLLISION AVEC LES MALUS ----
+        if (!bonusBlocked) {
+            const { pickedWastes: pickedMaluses } = CollisionSystem.checkWasteCollision(
+                playerPos,
+                malusesRef.current.filter(m => m.active),
+                CONFIG.BONUS_PICKUP_DISTANCE
+            );
+
+            pickedMaluses.forEach(malus => {
+                const malusData = malus.spriteData.data;
+
+                // Effet visuel de pickup (rouge)
+                bonusPickupEffectsRef.current.push({
+                    x: malus.x,
+                    y: malus.y,
+                    color: malusData.color || '#FF0000',
+                    startTime: now,
+                    duration: 800,
+                    isMalus: true
+                });
+
+                // Points négatifs
+                setScore(prev => {
+                    const newScore = Math.max(0, prev + malusData.points);
+                    if (onScoreChange) onScoreChange(newScore);
+                    return newScore;
+                });
+
+                // Appliquer l'effet du malus
+                if (malusData.effect === MALUS_EFFECT_TYPES.LOSE_SEGMENTS) {
+                    // Oracle - perd des segments
+                    const segmentsToLose = Math.min(malusData.value, segmentsRef.current.length);
+                    for (let i = 0; i < segmentsToLose; i++) {
+                        segmentsRef.current.pop();
+                    }
+                } else if (malusData.duration > 0) {
+                    // Effet temporaire
+                    activeMalusEffectsRef.current.push({
+                        effect: malusData.effect,
+                        value: malusData.value,
+                        endTime: now + malusData.duration
+                    });
+                }
+
+                // Respawn malus
+                const newMalus = spawnMalusAroundPlayer(playerPos.x, playerPos.y);
+                if (newMalus) {
+                    malus.x = newMalus.x;
+                    malus.y = newMalus.y;
+                    malus.spriteData = newMalus.spriteData;
+                    malus.image = newMalus.image;
+                } else {
+                    malus.active = false;
+                }
+            });
+        }
+
+        // ---- REPOSITIONNER LES MALUS TROP LOIN ----
+        malusesRef.current.forEach(malus => {
+            if (!malus.active) return;
+
+            const dx = malus.x - playerPos.x;
+            const dy = malus.y - playerPos.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance > CONFIG.BONUS_SPAWN_RADIUS) {
+                const newMalus = spawnMalusAroundPlayer(playerPos.x, playerPos.y);
+                if (newMalus) {
+                    malus.x = newMalus.x;
+                    malus.y = newMalus.y;
+                    malus.spriteData = newMalus.spriteData;
+                    malus.image = newMalus.image;
+                }
+            }
+        });
+
+        // Nettoyer les malus inactifs
+        malusesRef.current = malusesRef.current.filter(m => m.active);
+
         // Nettoyer les effets expirés
-        const now = Date.now();
         activeBonusEffectsRef.current = activeBonusEffectsRef.current.filter(effect => effect.endTime > now);
         bonusPickupEffectsRef.current = bonusPickupEffectsRef.current.filter(effect => {
             return (now - effect.startTime) < effect.duration;
@@ -558,12 +769,11 @@ export function WareZone({
         // ---- REPOSITIONNER LES BONUS TROP LOIN ----
         bonusesRef.current.forEach(bonus => {
             if (!bonus.active) return;
-            
+
             const dx = bonus.x - playerPos.x;
             const dy = bonus.y - playerPos.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
-            
-            // Si le bonus est hors du rayon de spawn, le repositionner
+
             if (distance > CONFIG.BONUS_SPAWN_RADIUS) {
                 const newBonus = spawnBonusAroundPlayer(playerPos.x, playerPos.y);
                 bonus.x = newBonus.x;
@@ -574,12 +784,9 @@ export function WareZone({
         });
 
         // ---- MISE À JOUR DES ENNEMIS ----
-        const enemyManager = enemyManagerRef.current;
-        
-        // Appliquer le bonus slowEnemies
         const slowEnemiesBonus = activeBonusEffectsRef.current.find(e => e.effect === 'slowEnemies');
         const enemySpeedMultiplier = slowEnemiesBonus ? slowEnemiesBonus.value : 1;
-        
+
         const gameStateForEnemies = {
             wastes: wastesRef.current,
             playerPos: {
@@ -588,37 +795,76 @@ export function WareZone({
                 angle: playerAngleRef.current
             },
             playerSegments: segmentsRef.current,
-            enemySpeedMultiplier // Passer le multiplicateur de vitesse
+            enemySpeedMultiplier
         };
 
         enemyManager.update(deltaTime, gameStateForEnemies);
-
-        // Les ennemis peuvent avoir mangé des déchets, mettre à jour la référence
         wastesRef.current = gameStateForEnemies.wastes;
 
-        // Respawn les déchets mangés par les ennemis
+        // Respawn déchets mangés par ennemis
         while (wastesRef.current.length < CONFIG.WASTE_COUNT) {
             const newWaste = spawnWasteAroundPlayer(playerPos.x, playerPos.y);
             wastesRef.current.push(newWaste);
         }
 
-        // ---- COLLISION JOUEUR VS ENNEMIS ----
-        const enemyCollision = enemyManager.checkPlayerCollision(
-            playerPos,
-            segmentsRef.current,
-            positionHistoryRef.current,
-            currentSpacingRef.current
-        );
+        // ---- MISE À JOUR DES DÉBRIS ----
+        debrisSystem.update(deltaTime);
 
-        if (enemyCollision) {
-            // Le joueur a touché un ennemi - perdre des points
-            setTimeout(() => {
-                setScore(prev => {
-                    const newScore = Math.max(0, prev - 50);
-                    if (onScoreChange) onScoreChange(newScore);
-                    return newScore;
-                });
-            }, 0);
+        // ---- COLLISION JOUEUR VS ENNEMIS (NOUVEAU SYSTÈME) ----
+        if (!isInvincible) {
+            // Vérifier si le joueur touche un ennemi (tête du joueur)
+            const headCollision = enemyManager.checkPlayerCollision(
+                playerPos,
+                segmentsRef.current,
+                positionHistoryRef.current,
+                currentSpacingRef.current
+            );
+
+            if (headCollision) {
+                if (headCollision.type === 'player_wins') {
+                    // Joueur gagne - points bonus
+                    setScore(prev => {
+                        const newScore = prev + (headCollision.points * CONFIG.POINTS_PER_SEGMENT);
+                        if (onScoreChange) onScoreChange(newScore);
+                        return newScore;
+                    });
+                } else if (headCollision.type === 'player_loses') {
+                    // Joueur perd - perte de vie
+                    loseLife();
+                } else if (headCollision.type === 'draw') {
+                    // Égalité - perdre un segment si possible
+                    if (segmentsRef.current.length > 0) {
+                        segmentsRef.current.pop();
+                    }
+                }
+            }
+
+            // Vérifier si un ennemi touche les segments du joueur
+            const segmentCollision = enemyManager.checkEnemyHitsPlayerSegments(
+                segmentsRef.current,
+                positionHistoryRef.current,
+                currentSpacingRef.current
+            );
+
+            if (segmentCollision) {
+                if (segmentCollision.type === 'player_loses') {
+                    // Ennemi plus grand - couper le joueur
+                    segmentsRef.current = segmentsRef.current.slice(0, segmentCollision.segmentIndex);
+                } else if (segmentCollision.type === 'player_wins') {
+                    // Joueur plus grand - points bonus
+                    setScore(prev => {
+                        const newScore = prev + (segmentCollision.points * CONFIG.POINTS_PER_SEGMENT);
+                        if (onScoreChange) onScoreChange(newScore);
+                        return newScore;
+                    });
+                }
+            }
+        }
+
+        // Vérifier si le score est négatif ou nul après une perte
+        if (score <= 0 && segmentsRef.current.length === 0) {
+            // Pas de segments et pas de points = risque de perte de vie
+            // (géré par le système de points)
         }
 
         // Mettre à jour la caméra
@@ -629,7 +875,7 @@ export function WareZone({
         // 1. Fond
         fill(CONFIG.BACKGROUND_COLOR);
 
-        // 2. Sol avec textures (ou grille de fallback)
+        // 2. Sol
         if (worldRef.current) {
             worldRef.current.render(ctx, camera);
         } else {
@@ -641,24 +887,22 @@ export function WareZone({
             drawOrigin(ctx, camera);
         }
 
-        // 4. Dessiner les déchets sur la map
+        // 4. Déchets
         wastesRef.current.forEach(waste => {
             if (camera.isVisible(waste.x, waste.y, CONFIG.WASTE_SIZE)) {
                 const screenPos = camera.worldToScreen(waste.x, waste.y);
                 if (waste.image.complete) {
                     const sd = waste.spriteData;
                     if (sd.type === 'spritesheet') {
-                        // Découper depuis la spritesheet
                         ctx.drawImage(
                             waste.image,
-                            sd.x, sd.y, sd.w, sd.h,  // Source (découpe)
+                            sd.x, sd.y, sd.w, sd.h,
                             screenPos.x - CONFIG.WASTE_SIZE / 2,
                             screenPos.y - CONFIG.WASTE_SIZE / 2,
                             CONFIG.WASTE_SIZE,
                             CONFIG.WASTE_SIZE
                         );
                     } else {
-                        // Image complète
                         ctx.drawImage(
                             waste.image,
                             screenPos.x - CONFIG.WASTE_SIZE / 2,
@@ -671,58 +915,47 @@ export function WareZone({
             }
         });
 
-        // 5. Dessiner les bonus sur la map
+        // 5. Bonus
         bonusesRef.current.forEach((bonus, index) => {
             if (!bonus.active) return;
-            
+
             if (camera.isVisible(bonus.x, bonus.y, CONFIG.BONUS_SIZE)) {
                 const screenPos = camera.worldToScreen(bonus.x, bonus.y);
                 if (bonus.image.complete) {
                     const bonusData = bonus.spriteData.data;
-                    
-                    // Effet néon pulsant
+
                     const time = Date.now() / 1000;
-                    const pulse = Math.sin(time * 3 + index) * 0.3 + 0.7; // Oscillation entre 0.4 et 1
-                    
-                    // Dessiner l'aura néon (plusieurs couches pour effet de glow)
+                    const pulse = Math.sin(time * 3 + index) * 0.3 + 0.7;
+
                     ctx.shadowColor = bonusData.color;
                     ctx.shadowBlur = 25 * pulse;
-                    
-                    // Aura externe
+
                     ctx.globalAlpha = 0.15 * pulse;
                     ctx.fillStyle = bonusData.color;
                     ctx.beginPath();
                     ctx.arc(screenPos.x, screenPos.y, CONFIG.BONUS_SIZE / 2 + 15 * pulse, 0, Math.PI * 2);
                     ctx.fill();
-                    
-                    // Aura moyenne
+
                     ctx.globalAlpha = 0.25 * pulse;
                     ctx.beginPath();
                     ctx.arc(screenPos.x, screenPos.y, CONFIG.BONUS_SIZE / 2 + 8 * pulse, 0, Math.PI * 2);
                     ctx.fill();
-                    
+
                     ctx.globalAlpha = 1;
-                    
-                    // Dessiner le sprite du bonus avec ombre portée
+
                     ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
                     ctx.shadowBlur = 8;
                     ctx.shadowOffsetX = 3;
                     ctx.shadowOffsetY = 3;
-                    
-                    // Calculer les dimensions en respectant le ratio d'aspect
-                    // tout en gardant la même taille maximale pour tous les bonus
+
                     const imgWidth = bonus.image.naturalWidth || bonus.image.width;
                     const imgHeight = bonus.image.naturalHeight || bonus.image.height;
-                    const aspectRatio = imgWidth / imgHeight;
-                    
-                    let drawWidth, drawHeight;
-                    // Utiliser la dimension la plus grande comme référence
                     const scale = Math.max(imgWidth, imgHeight);
                     const targetSize = CONFIG.BONUS_SIZE;
-                    
-                    drawWidth = (imgWidth / scale) * targetSize;
-                    drawHeight = (imgHeight / scale) * targetSize;
-                    
+
+                    const drawWidth = (imgWidth / scale) * targetSize;
+                    const drawHeight = (imgHeight / scale) * targetSize;
+
                     ctx.drawImage(
                         bonus.image,
                         screenPos.x - drawWidth / 2,
@@ -730,8 +963,7 @@ export function WareZone({
                         drawWidth,
                         drawHeight
                     );
-                    
-                    // Réinitialiser les effets
+
                     ctx.shadowBlur = 0;
                     ctx.shadowOffsetX = 0;
                     ctx.shadowOffsetY = 0;
@@ -739,62 +971,117 @@ export function WareZone({
             }
         });
 
-        // 5.5. Dessiner les effets de pickup de bonus
+        // 5.2 Malus (glow rouge pulsant)
+        malusesRef.current.forEach((malus, index) => {
+            if (!malus.active) return;
+
+            if (camera.isVisible(malus.x, malus.y, CONFIG.BONUS_SIZE)) {
+                const screenPos = camera.worldToScreen(malus.x, malus.y);
+                if (malus.image.complete) {
+                    const malusData = malus.spriteData.data;
+                    const malusColor = malusData?.color || '#FF0000';
+
+                    const time = Date.now() / 1000;
+                    // Pulsation plus rapide et plus intense pour les malus
+                    const pulse = Math.sin(time * 5 + index) * 0.4 + 0.6;
+
+                    // Glow rouge
+                    ctx.shadowColor = malusColor;
+                    ctx.shadowBlur = 30 * pulse;
+
+                    // Cercles de danger
+                    ctx.globalAlpha = 0.2 * pulse;
+                    ctx.fillStyle = malusColor;
+                    ctx.beginPath();
+                    ctx.arc(screenPos.x, screenPos.y, CONFIG.BONUS_SIZE / 2 + 20 * pulse, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.globalAlpha = 0.3 * pulse;
+                    ctx.beginPath();
+                    ctx.arc(screenPos.x, screenPos.y, CONFIG.BONUS_SIZE / 2 + 10 * pulse, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.globalAlpha = 1;
+
+                    // Ombre
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                    ctx.shadowBlur = 8;
+                    ctx.shadowOffsetX = 3;
+                    ctx.shadowOffsetY = 3;
+
+                    const imgWidth = malus.image.naturalWidth || malus.image.width;
+                    const imgHeight = malus.image.naturalHeight || malus.image.height;
+                    const scale = Math.max(imgWidth, imgHeight);
+                    const targetSize = CONFIG.BONUS_SIZE;
+
+                    const drawWidth = (imgWidth / scale) * targetSize;
+                    const drawHeight = (imgHeight / scale) * targetSize;
+
+                    ctx.drawImage(
+                        malus.image,
+                        screenPos.x - drawWidth / 2,
+                        screenPos.y - drawHeight / 2,
+                        drawWidth,
+                        drawHeight
+                    );
+
+                    ctx.shadowBlur = 0;
+                    ctx.shadowOffsetX = 0;
+                    ctx.shadowOffsetY = 0;
+                }
+            }
+        });
+
+        // 5.5. Effets de pickup
         bonusPickupEffectsRef.current.forEach(effect => {
             const elapsed = Date.now() - effect.startTime;
             const progress = elapsed / effect.duration;
-            
+
             if (camera.isVisible(effect.x, effect.y, 100)) {
                 const screenPos = camera.worldToScreen(effect.x, effect.y);
-                
-                // Cercles expansifs qui s'estompent
+
                 const radius = 20 + (progress * 60);
                 const alpha = 1 - progress;
-                
-                // Cercle externe
+
                 ctx.strokeStyle = effect.color;
                 ctx.globalAlpha = alpha * 0.6;
                 ctx.lineWidth = 4;
                 ctx.beginPath();
                 ctx.arc(screenPos.x, screenPos.y, radius, 0, Math.PI * 2);
                 ctx.stroke();
-                
-                // Cercle interne
+
                 ctx.globalAlpha = alpha * 0.8;
                 ctx.lineWidth = 2;
                 ctx.beginPath();
                 ctx.arc(screenPos.x, screenPos.y, radius * 0.6, 0, Math.PI * 2);
                 ctx.stroke();
-                
-                // Particules qui s'échappent
+
                 for (let i = 0; i < 8; i++) {
                     const angle = (Math.PI * 2 * i) / 8;
                     const particleRadius = radius * 1.2;
                     const px = screenPos.x + Math.cos(angle) * particleRadius;
                     const py = screenPos.y + Math.sin(angle) * particleRadius;
-                    
+
                     ctx.fillStyle = effect.color;
                     ctx.globalAlpha = alpha;
                     ctx.beginPath();
                     ctx.arc(px, py, 3, 0, Math.PI * 2);
                     ctx.fill();
                 }
-                
+
                 ctx.globalAlpha = 1;
             }
         });
 
-        // 5.6. Dessiner l'effet de magnetism (rayon d'attraction)
+        // 5.6. Effet magnetism
         const magnetismEffect = activeBonusEffectsRef.current.find(e => e.effect === 'magnetism');
         if (magnetismEffect) {
             const magnetRadius = magnetismEffect.value;
             const screenPos = camera.worldToScreen(playerPositionRef.current.x, playerPositionRef.current.y);
-            
-            // Effet pulsant
+
             const time = Date.now() / 1000;
             const pulse = Math.sin(time * 2) * 0.2 + 0.8;
-            
-            // Dessiner le cercle d'attraction
+
             ctx.globalAlpha = 0.15 * pulse;
             ctx.strokeStyle = '#FCC133';
             ctx.lineWidth = 3;
@@ -803,17 +1090,18 @@ export function WareZone({
             ctx.arc(screenPos.x, screenPos.y, magnetRadius * camera.zoom * pulse, 0, Math.PI * 2);
             ctx.stroke();
             ctx.setLineDash([]);
-            
+
             ctx.globalAlpha = 1;
         }
 
-        // 5. Dessiner les ennemis
+        // 6. Débris
+        debrisSystem.render(ctx, camera);
+
+        // 7. Ennemis
         enemyManagerRef.current.render(ctx, camera);
 
-        // 6. Dessiner les segments du snake (queue)
+        // 8. Segments du snake
         segmentsRef.current.forEach((segment, index) => {
-            // Calculer la position du segment en parcourant l'historique
-            // en utilisant l'espacement dynamique actuel
             let distanceNeeded = (index + 1) * currentSpacingRef.current;
             let accumulatedDistance = 0;
             let pos = null;
@@ -821,13 +1109,13 @@ export function WareZone({
             for (let i = 1; i < positionHistoryRef.current.length; i++) {
                 const prev = positionHistoryRef.current[i - 1];
                 const curr = positionHistoryRef.current[i];
-                
+
                 const dx = curr.x - prev.x;
                 const dy = curr.y - prev.y;
                 const segmentDist = Math.sqrt(dx * dx + dy * dy);
-                
+
                 accumulatedDistance += segmentDist;
-                
+
                 if (accumulatedDistance >= distanceNeeded) {
                     pos = curr;
                     break;
@@ -842,7 +1130,6 @@ export function WareZone({
                 const screenPos = camera.worldToScreen(pos.x, pos.y);
                 const sd = segment.spriteData;
                 if (sd.type === 'spritesheet') {
-                    // Découper depuis la spritesheet
                     ctx.drawImage(
                         segment.image,
                         sd.x, sd.y, sd.w, sd.h,
@@ -852,7 +1139,6 @@ export function WareZone({
                         CONFIG.SEGMENT_SIZE
                     );
                 } else {
-                    // Image complète
                     ctx.drawImage(
                         segment.image,
                         screenPos.x - CONFIG.SEGMENT_SIZE / 2,
@@ -864,7 +1150,7 @@ export function WareZone({
             }
         });
 
-        // 7. Dessiner la tête du snake (triangle)
+        // 9. Tête du snake
         const playerScreen = camera.worldToScreen(
             playerPositionRef.current.x,
             playerPositionRef.current.y
@@ -874,28 +1160,28 @@ export function WareZone({
         ctx.translate(playerScreen.x, playerScreen.y);
         ctx.rotate(playerAngleRef.current);
 
-        // Triangle (tête du snake)
-        ctx.fillStyle = '#4ade80';
+        // Couleur selon invincibilité
+        ctx.fillStyle = isInvincible ? '#ffd700' : '#4ade80';
+
         ctx.beginPath();
-        ctx.moveTo(20, 0);      // Pointe avant
-        ctx.lineTo(-10, -12);   // Arrière gauche
-        ctx.lineTo(-10, 12);    // Arrière droite
+        ctx.moveTo(20, 0);
+        ctx.lineTo(-10, -12);
+        ctx.lineTo(-10, 12);
         ctx.closePath();
         ctx.fill();
 
-        // Cercle central
         ctx.beginPath();
         ctx.arc(0, 0, 8, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.restore();
 
-        // 8. Debug info
+        // 10. Debug info
         if (debug || CONFIG.DEBUG) {
             drawDebugInfo(ctx, camera, deltaTime);
         }
 
-    }, [ctx, isPaused, gameState, fill, drawGrid, drawOrigin, drawDebugInfo, debug, onScoreChange, spawnWasteAroundPlayer, spawnBonusAroundPlayer]);
+    }, [ctx, isPaused, gameState, fill, drawGrid, drawOrigin, drawDebugInfo, debug, onScoreChange, spawnWasteAroundPlayer, spawnBonusAroundPlayer, spawnMalusAroundPlayer, loseLife, gainLife, score, lives]);
 
     // Démarrer la boucle
     useGameLoop({
@@ -914,27 +1200,20 @@ export function WareZone({
                 className="warezone__canvas"
             />
 
-            {/* Overlay Cyberpunk Blade Runner */}
-            <div className="warezone__cyberpunk-overlay">
-                {/* Vignette d'assombrissement */}
-                <div className="warezone__dark-vignette"></div>
-                
-                {/* Bordures néon sur les 4 côtés */}
-                <div className="warezone__neon-border-top"></div>
-                <div className="warezone__neon-border-bottom"></div>
-                <div className="warezone__neon-border-left"></div>
-                <div className="warezone__neon-border-right"></div>
-            </div>
-
-            {/* Overlay pour UI (children passés par le parent) */}
             <div className="warezone__overlay">
                 {children}
 
-                {/* Écran de pause interne */}
                 {gameState === 'paused' && (
                     <div className="warezone__pause">
                         <h2>PAUSE</h2>
                         <p>Appuie sur ESPACE pour continuer</p>
+                    </div>
+                )}
+
+                {gameState === 'gameover' && (
+                    <div className="warezone__gameover">
+                        <h2>GAME OVER</h2>
+                        <p>Score final: {score}</p>
                     </div>
                 )}
             </div>
