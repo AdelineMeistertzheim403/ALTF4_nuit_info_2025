@@ -2,6 +2,8 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 
 import Home from './pages/Home';
+import GrooveBoxMain from './pages/GrooveBoxMain'
+
 import SnakeSoulsApp from './SnakeSouls/App';
 
 function App() {
@@ -9,6 +11,7 @@ function App() {
     <div className="App">
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/groovebox" element={<GrooveBoxMain/>}/>
         <Route path="/snake" element={<SnakeSoulsApp />} />
 
         {/* exemple d'une autre route */}

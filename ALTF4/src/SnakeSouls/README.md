@@ -50,3 +50,31 @@ src/
 │
 └── App.jsx                      # Point d'entrée React
 ```
+
+Gestionnaire de Tilemap :
+
+```
+warezone/
+├── WareZone.jsx           # Composant principal
+├── WareZone.css           # Styles
+├── index.js               # Exports
+│
+├── hooks/
+│   ├── useCanvas.js       # Canvas responsive
+│   └── useGameLoop.js     # Boucle 60fps
+│
+├── camera/
+│   └── Camera.js          # Suit le joueur
+│
+├── world/                 # ⬅️ SYSTÈME DE SOL
+│   ├── TileSet.js         # Charge les images
+│   ├── TileMap.js         # Génère la grille infinie
+│   ├── WorldRenderer.js   # Dessine les tuiles
+│   ├── placeholderTextures.js  # Textures générées
+│   ├── textureConfig.js   # 🆕 Config pour vraies textures
+│   └── index.js
+│
+└── ground/                # (Alternative - peut supprimer)
+    └── ...
+```
+
