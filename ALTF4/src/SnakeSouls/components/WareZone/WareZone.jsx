@@ -35,7 +35,6 @@ const CONFIG = {
     // Déchets
     WASTE_COUNT: 20,           // Nombre de déchets sur la map
     WASTE_SIZE: 40,            // Taille des sprites de déchets
-    WASTE_SPAWN_RADIUS: 1500,  // Rayon de spawn autour de l'origine
     WASTE_SPAWN_RADIUS: 1500,  // Rayon de spawn autour du joueur
     WASTE_MIN_DISTANCE: 200,   // Distance minimale de spawn (éviter de spawn trop près)
     PICKUP_DISTANCE: 35,       // Distance pour ramasser un déchet
