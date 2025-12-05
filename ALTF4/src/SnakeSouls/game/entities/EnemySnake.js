@@ -53,7 +53,7 @@ export class EnemySnake {
   update(deltaTime, gameState) {
     if (!this.alive) return;
 
-    const { wastes, playerPos, playerSegments } = gameState;
+    const { wastes, playerPos, playerSegments, otherEnemies } = gameState;
 
     // Timer pour les décisions IA
     this.stateTimer += deltaTime;
@@ -63,11 +63,24 @@ export class EnemySnake {
       this.makeDecision(wastes, playerPos, playerSegments);
     }
 
+    // Vérifier si on va se mordre et éviter si nécessaire
+    if (this.willCollideWithSelf()) {
+      this.aiState = 'evading';
+    }
+
+    // Vérifier si on va rentrer dans un autre ennemi
+    if (otherEnemies && this.willCollideWithOtherEnemy(otherEnemies)) {
+      this.aiState = 'evading';
+    }
+
     // Exécuter le comportement selon l'état
     this.executeBehavior(deltaTime, wastes, playerPos);
 
     // Déplacer le snake
     this.move(deltaTime);
+
+    // Vérifier la collision avec soi-même après le déplacement
+    this.checkSelfCollision();
 
     // Sauvegarder l'historique des positions
     this.positionHistory.unshift({ x: this.x, y: this.y, angle: this.angle });
@@ -332,6 +345,105 @@ export class EnemySnake {
     }
 
     ctx.restore();
+  }
+
+  /**
+   * Prédit si on va se mordre dans les prochaines frames
+   * @returns {boolean} true si collision imminente
+   */
+  willCollideWithSelf() {
+    if (this.segments.length < 3) return false;
+
+    // Prédire la position future (dans ~0.3 secondes)
+    const lookAhead = 60; // pixels devant
+    const futureX = this.x + Math.cos(this.angle) * lookAhead;
+    const futureY = this.y + Math.sin(this.angle) * lookAhead;
+
+    // Vérifier la distance avec chaque segment (en ignorant les premiers)
+    const segmentPositions = this.getSegmentPositions();
+    const collisionRadius = this.segmentSize * 0.8;
+
+    for (let i = 2; i < segmentPositions.length; i++) {
+      const seg = segmentPositions[i];
+      const dx = futureX - seg.x;
+      const dy = futureY - seg.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < collisionRadius) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Vérifie la collision avec soi-même et coupe si nécessaire
+   */
+  checkSelfCollision() {
+    if (this.segments.length < 4) return;
+
+    const segmentPositions = this.getSegmentPositions();
+    const collisionRadius = this.segmentSize * 0.5;
+
+    // Ignorer les 3 premiers segments (trop proches de la tête)
+    for (let i = 3; i < segmentPositions.length; i++) {
+      const seg = segmentPositions[i];
+      const dx = this.x - seg.x;
+      const dy = this.y - seg.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < collisionRadius) {
+        // Couper le serpent à cet endroit
+        this.segments = this.segments.slice(0, i);
+        return;
+      }
+    }
+  }
+
+  /**
+   * Prédit si on va rentrer dans un autre ennemi
+   * @param {Array} otherEnemies - Liste des autres ennemis
+   * @returns {boolean} true si collision imminente
+   */
+  willCollideWithOtherEnemy(otherEnemies) {
+    if (!otherEnemies || otherEnemies.length === 0) return false;
+
+    // Prédire la position future
+    const lookAhead = 80; // pixels devant
+    const futureX = this.x + Math.cos(this.angle) * lookAhead;
+    const futureY = this.y + Math.sin(this.angle) * lookAhead;
+
+    const collisionRadius = 40;
+
+    for (const enemy of otherEnemies) {
+      if (!enemy.alive) continue;
+
+      // Vérifier collision avec la tête de l'autre ennemi
+      const headDist = Math.sqrt(
+        Math.pow(futureX - enemy.x, 2) +
+        Math.pow(futureY - enemy.y, 2)
+      );
+
+      if (headDist < collisionRadius) {
+        return true;
+      }
+
+      // Vérifier collision avec les segments de l'autre ennemi
+      const segments = enemy.getSegmentPositions();
+      for (const seg of segments) {
+        const dist = Math.sqrt(
+          Math.pow(futureX - seg.x, 2) +
+          Math.pow(futureY - seg.y, 2)
+        );
+
+        if (dist < collisionRadius) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 
   /**

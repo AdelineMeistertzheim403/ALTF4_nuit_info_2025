@@ -41,7 +41,9 @@ export class EnemyManager {
 
     // Mettre à jour chaque ennemi
     this.enemies.forEach(enemy => {
-      enemy.update(deltaTime, gameState);
+      // Passer les autres ennemis pour l'évitement
+      const otherEnemies = this.enemies.filter(e => e.id !== enemy.id);
+      enemy.update(deltaTime, { ...gameState, otherEnemies });
 
       // Vérifier si l'ennemi mange des déchets
       const { picked, remaining } = enemy.checkWasteCollision(gameState.wastes);
@@ -50,6 +52,9 @@ export class EnemyManager {
         gameState.wastes = remaining;
       }
     });
+
+    // Vérifier les collisions entre ennemis et couper si nécessaire
+    this.checkEnemyCollisions();
 
     // Nettoyer les ennemis morts
     this.enemies = this.enemies.filter(enemy => enemy.alive);
@@ -171,6 +176,72 @@ export class EnemyManager {
     }
 
     return null;
+  }
+
+  /**
+   * Vérifie les collisions entre ennemis
+   */
+  checkEnemyCollisions() {
+    const collisionRadius = 20;
+
+    for (let i = 0; i < this.enemies.length; i++) {
+      const enemy1 = this.enemies[i];
+      if (!enemy1.alive) continue;
+
+      for (let j = i + 1; j < this.enemies.length; j++) {
+        const enemy2 = this.enemies[j];
+        if (!enemy2.alive) continue;
+
+        // Collision tête à tête
+        const headDist = Math.sqrt(
+          Math.pow(enemy1.x - enemy2.x, 2) +
+          Math.pow(enemy1.y - enemy2.y, 2)
+        );
+
+        if (headDist < collisionRadius) {
+          // Les deux perdent des segments
+          if (enemy1.segments.length > 0) {
+            enemy1.segments.pop();
+          }
+          if (enemy2.segments.length > 0) {
+            enemy2.segments.pop();
+          }
+          continue;
+        }
+
+        // Collision tête de enemy1 avec segments de enemy2
+        const segments2 = enemy2.getSegmentPositions();
+        for (let k = 0; k < segments2.length; k++) {
+          const seg = segments2[k];
+          const dist = Math.sqrt(
+            Math.pow(enemy1.x - seg.x, 2) +
+            Math.pow(enemy1.y - seg.y, 2)
+          );
+
+          if (dist < collisionRadius) {
+            // Couper enemy2 à cet endroit
+            enemy2.segments = enemy2.segments.slice(0, k);
+            break;
+          }
+        }
+
+        // Collision tête de enemy2 avec segments de enemy1
+        const segments1 = enemy1.getSegmentPositions();
+        for (let k = 0; k < segments1.length; k++) {
+          const seg = segments1[k];
+          const dist = Math.sqrt(
+            Math.pow(enemy2.x - seg.x, 2) +
+            Math.pow(enemy2.y - seg.y, 2)
+          );
+
+          if (dist < collisionRadius) {
+            // Couper enemy1 à cet endroit
+            enemy1.segments = enemy1.segments.slice(0, k);
+            break;
+          }
+        }
+      }
+    }
   }
 
   /**

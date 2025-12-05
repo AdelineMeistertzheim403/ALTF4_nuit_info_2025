@@ -19,9 +19,9 @@ import windowsSprite from '../../assets/sprites/enemies/windows.png';
 // ============================================
 export const ENEMY_DIFFICULTY = {
   // Vitesse de base des ennemis (modifiable selon la difficulté)
-  baseSpeed: 250,
+  baseSpeed: 200,
   // Variation aléatoire de la vitesse (+/- ce pourcentage)
-  speedVariation: 0.3, // 30%
+  speedVariation: 0.2, // 20%
   // Multiplicateur de difficulté (1 = normal, 1.5 = difficile, 2 = hardcore)
   difficultyMultiplier: 1,
 };
