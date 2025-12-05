@@ -1,11 +1,12 @@
 import { useAtom } from "jotai";
-import { patternAtom, currentStepAtom } from "../../state/grooveState";
+import { patternAtom, currentStepAtom, muteAtom } from "../../state/grooveState";
 import Track from "./Track";
 import "./groovebox.css";
 
 export default function GrooveBox() {
   const [pattern, setPattern] = useAtom(patternAtom);
   const [currentStep] = useAtom(currentStepAtom);
+  const [mutes, setMutes] = useAtom(muteAtom);
   const tracks = [
     { name: "Kick", trackKey: "kick" },
     { name: "808 Kick", trackKey: "kick808" },
@@ -27,6 +28,13 @@ export default function GrooveBox() {
           trackKey={trackKey}
           pattern={pattern}
           currentStep={currentStep}
+          mute={mutes[trackKey]}
+          setMute={(val) =>
+            setMutes((prev) => ({
+              ...prev,
+              [trackKey]: typeof val === "boolean" ? val : !prev[trackKey],
+            }))
+          }
           setPattern={setPattern}
         />
       ))}

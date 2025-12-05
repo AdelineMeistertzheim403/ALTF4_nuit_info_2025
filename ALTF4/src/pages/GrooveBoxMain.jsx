@@ -2,29 +2,35 @@ import { useEffect } from "react";
 import { useAtom } from "jotai";
 import GrooveBox from "../components/GrooveBox/GrooveBox";
 import ToneControls from "../components/GrooveBox/ToneControls";
+import TempoSlider from "../components/Controls/TempoSlider";
 import CanvasVisualizer from "../components/Visualizer/CanvasVisualizer";
 import ThreeVisualizer from "../components/Visualizer/ThreeVisualizer";
-import { patternAtom, playingAtom, soundControlsAtom, currentStepAtom } from "../state/grooveState";
+import { patternAtom, playingAtom, soundControlsAtom, currentStepAtom, muteAtom } from "../state/grooveState";
 import { initTone } from "../audio/toneInit";
 import { applyControls } from "../audio/instruments";
-import { startTransport, stopTransport, updateTransportControls } from "../audio/transport";
+import { startTransport, stopTransport, updateTransportControls, updateMutes } from "../audio/transport";
 import "./groovebox.css";
 
 export default function GrooveBoxMain() {
   const [pattern] = useAtom(patternAtom);
   const [playing, setPlaying] = useAtom(playingAtom);
-  const [controls] = useAtom(soundControlsAtom);
+  const [controls, setControls] = useAtom(soundControlsAtom);
   const [, setCurrentStep] = useAtom(currentStepAtom);
+  const [mutes] = useAtom(muteAtom);
 
   useEffect(() => {
     applyControls(controls);
     updateTransportControls(controls);
   }, [controls]);
 
+  useEffect(() => {
+    updateMutes(mutes);
+  }, [mutes]);
+
   async function togglePlay() {
     if (!playing) {
       await initTone();
-      startTransport(pattern, controls, setCurrentStep);
+      startTransport(pattern, controls, mutes, setCurrentStep);
     } else {
       stopTransport(setCurrentStep);
     }
@@ -48,7 +54,15 @@ export default function GrooveBoxMain() {
       </div>
 
       <div className="groove-content">
-        <h1 className="groove-title">GrooveBox Visualizer</h1>
+        <div className="groove-header">
+          <h1 className="groove-title">GrooveBox Visualizer</h1>
+          <div className="tempo-inline">
+            <TempoSlider
+              initialBpm={controls.bpm}
+              onBpmChange={(val) => setControls((prev) => ({ ...prev, bpm: val }))}
+            />
+          </div>
+        </div>
         <GrooveBox />
         <ToneControls
           action={

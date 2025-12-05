@@ -1,6 +1,14 @@
 import StepButton from "./StepButton";
 
-export default function Track({ name, trackKey, pattern, setPattern, currentStep }) {
+export default function Track({
+  name,
+  trackKey,
+  pattern,
+  setPattern,
+  currentStep,
+  mute,
+  setMute,
+}) {
   return (
     <div className="track">
       <div className="label">{name}</div>
@@ -16,6 +24,13 @@ export default function Track({ name, trackKey, pattern, setPattern, currentStep
           }}
         />
       ))}
+      <button
+        className={`mute-btn ${mute ? "muted" : ""}`}
+        onClick={() => setMute(!mute)}
+        aria-pressed={mute}
+      >
+        {mute ? "Unmute" : "Mute"}
+      </button>
     </div>
   );
 }
