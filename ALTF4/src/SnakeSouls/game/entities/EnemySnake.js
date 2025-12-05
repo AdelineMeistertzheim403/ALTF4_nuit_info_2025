@@ -47,7 +47,7 @@ export class EnemySnake {
   /**
    * Met à jour l'ennemi
    */
-  update(deltaTime, gameState) {
+  update(deltaTime, gameState, speedMultiplier = 1) {
     if (!this.alive) return;
 
     // Déléguer la logique de décision à l'IA
@@ -61,8 +61,8 @@ export class EnemySnake {
       this.evade(deltaTime);
     }
 
-    // Déplacer le snake
-    this.move(deltaTime);
+    // Déplacer le snake (avec le multiplicateur de vitesse)
+    this.move(deltaTime, speedMultiplier);
 
     // Vérifier la collision avec soi-même après le déplacement
     this.checkSelfCollision();
@@ -109,9 +109,10 @@ export class EnemySnake {
   /**
    * Déplace le snake
    */
-  move(deltaTime) {
-    this.x += Math.cos(this.angle) * this.speed * deltaTime;
-    this.y += Math.sin(this.angle) * this.speed * deltaTime;
+  move(deltaTime, speedMultiplier = 1) {
+    const effectiveSpeed = this.speed * speedMultiplier;
+    this.x += Math.cos(this.angle) * effectiveSpeed * deltaTime;
+    this.y += Math.sin(this.angle) * effectiveSpeed * deltaTime;
   }
 
   /**

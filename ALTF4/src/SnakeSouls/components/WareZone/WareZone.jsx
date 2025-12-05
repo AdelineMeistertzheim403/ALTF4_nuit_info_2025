@@ -551,6 +551,11 @@ export function WareZone({
 
         // ---- MISE À JOUR DES ENNEMIS ----
         const enemyManager = enemyManagerRef.current;
+        
+        // Appliquer le bonus slowEnemies
+        const slowEnemiesBonus = activeBonusEffectsRef.current.find(e => e.effect === 'slowEnemies');
+        const enemySpeedMultiplier = slowEnemiesBonus ? slowEnemiesBonus.value : 1;
+        
         const gameStateForEnemies = {
             wastes: wastesRef.current,
             playerPos: {
@@ -558,7 +563,8 @@ export function WareZone({
                 y: playerPositionRef.current.y,
                 angle: playerAngleRef.current
             },
-            playerSegments: segmentsRef.current
+            playerSegments: segmentsRef.current,
+            enemySpeedMultiplier // Passer le multiplicateur de vitesse
         };
 
         enemyManager.update(deltaTime, gameStateForEnemies);

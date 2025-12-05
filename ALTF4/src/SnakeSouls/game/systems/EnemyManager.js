@@ -30,7 +30,7 @@ export class EnemyManager {
   update(deltaTime, gameState) {
     if (!this.active) return;
 
-    const { wastes, playerPos, playerSegments } = gameState;
+    const { wastes, playerPos, playerSegments, enemySpeedMultiplier = 1 } = gameState;
 
     // Timer de spawn
     this.spawnTimer += deltaTime;
@@ -44,7 +44,7 @@ export class EnemyManager {
     this.enemies.forEach(enemy => {
       // Passer les autres ennemis pour l'évitement
       const otherEnemies = this.enemies.filter(e => e.id !== enemy.id);
-      enemy.update(deltaTime, { ...gameState, otherEnemies });
+      enemy.update(deltaTime, { ...gameState, otherEnemies }, enemySpeedMultiplier);
 
       // Vérifier si l'ennemi mange des déchets
       const { picked, remaining } = enemy.checkWasteCollision(gameState.wastes);
