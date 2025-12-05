@@ -7,7 +7,8 @@ import fedoraSprite from '../../assets/sprites/bonus/fedora.png';
 import debianSprite from '../../assets/sprites/bonus/debian.png';
 import archSprite from '../../assets/sprites/bonus/arch.png';
 import mintSprite from '../../assets/sprites/bonus/mint.png';
-import { BONUSES } from './bonuses.js';
+import linuxSprite from '../../assets/sprites/bonus/linux.png';
+import { BONUSES, BONUS_SPAWN_RATES } from './bonuses.js';
 
 // Mapping des sprites par ID
 const SPRITE_MAP = {
@@ -15,7 +16,8 @@ const SPRITE_MAP = {
     fedora: fedoraSprite,
     debian: debianSprite,
     arch: archSprite,
-    mint: mintSprite
+    mint: mintSprite,
+    linux: linuxSprite
 };
 
 /**
@@ -73,14 +75,7 @@ class BonusSpriteLoader {
      * Obtenir le taux de spawn d'un bonus
      */
     getBonusSpawnRate(bonusId) {
-        const rates = {
-            ubuntu: 25,
-            fedora: 15,
-            debian: 10,
-            arch: 35,
-            mint: 15
-        };
-        return rates[bonusId] || 20;
+        return BONUS_SPAWN_RATES[bonusId] || 10;
     }
 
     /**

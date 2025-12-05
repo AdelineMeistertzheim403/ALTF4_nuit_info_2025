@@ -42,7 +42,7 @@ const CONFIG = {
     PICKUP_DISTANCE: 35,       // Distance pour ramasser un déchet
 
     // Bonus
-    BONUS_COUNT: 5,            // Nombre de bonus sur la map
+    BONUS_COUNT: 6,            // Nombre de bonus sur la map
     BONUS_SIZE: 50,            // Taille des sprites de bonus
     BONUS_SPAWN_RADIUS: 1500,  // Rayon de spawn autour du joueur
     BONUS_MIN_DISTANCE: 300,   // Distance minimale de spawn
@@ -415,6 +415,30 @@ export function WareZone({
 
         wastesRef.current = remainingWastes;
 
+        // ---- EFFET MAGNETISM (ATTIRE LES DÉCHETS) ----
+        const magnetismBonus = activeBonusEffectsRef.current.find(e => e.effect === 'magnetism');
+        if (magnetismBonus) {
+            const magnetRadius = magnetismBonus.value; // Rayon d'attraction
+            const magnetStrength = 200; // Vitesse d'attraction (pixels/sec)
+            
+            wastesRef.current.forEach(waste => {
+                const dx = waste.x - playerPos.x;
+                const dy = waste.y - playerPos.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // Si le déchet est dans le rayon d'attraction
+                if (distance < magnetRadius && distance > CONFIG.PICKUP_DISTANCE) {
+                    // Calculer la direction vers le joueur
+                    const dirX = -dx / distance;
+                    const dirY = -dy / distance;
+                    
+                    // Déplacer le déchet vers le joueur
+                    waste.x += dirX * magnetStrength * deltaTime;
+                    waste.y += dirY * magnetStrength * deltaTime;
+                }
+            });
+        }
+
         // ---- REPOSITIONNER LES DÉCHETS TROP LOIN ----
         // Vérifier si des déchets sont trop loin du joueur et les repositionner
         wastesRef.current.forEach(waste => {
@@ -759,6 +783,30 @@ export function WareZone({
                 ctx.globalAlpha = 1;
             }
         });
+
+        // 5.6. Dessiner l'effet de magnetism (rayon d'attraction)
+        const magnetismEffect = activeBonusEffectsRef.current.find(e => e.effect === 'magnetism');
+        if (magnetismEffect) {
+            const magnetRadius = magnetismEffect.value;
+            const screenPos = camera.worldToScreen(playerPositionRef.current.x, playerPositionRef.current.y);
+            
+            // Effet pulsant
+            const time = Date.now() / 1000;
+            const pulse = Math.sin(time * 2) * 0.2 + 0.8;
+            
+            // Dessiner le cercle d'attraction
+            ctx.globalAlpha = 0.15 * pulse;
+            ctx.strokeStyle = '#FCC133';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([10, 5]);
+            ctx.beginPath();
+            ctx.arc(screenPos.x, screenPos.y, magnetRadius * camera.zoom * pulse, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            ctx.globalAlpha = 1;
+        }
+
         // 5. Dessiner les ennemis
         enemyManagerRef.current.render(ctx, camera);
 
