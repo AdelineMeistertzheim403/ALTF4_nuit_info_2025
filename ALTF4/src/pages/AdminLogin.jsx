@@ -1,7 +1,7 @@
 // src/pages/AdminLogin.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "./AdminLogin.css"; 
+import "./AdminLogin.css";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -50,9 +50,18 @@ export default function AdminLogin() {
         })}
       </div>
 
+      {/* Réinitialiser (si tu veux le remettre plus tard) */}
       {/* <button className="reset-button" onClick={handleReset}>
         Réinitialiser
       </button> */}
+
+      {/* Nouveau bouton retour */}
+      <button
+        className="home-button"
+        onClick={() => navigate("/")}
+      >
+        Retour à l'accueil
+      </button>
     </div>
   );
 }
