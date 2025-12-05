@@ -2,6 +2,7 @@
  * Système de chargement des sprites de bonus
  */
 
+import birdSprite from '../../assets/sprites/bonus/bird.png';
 import ubuntuSprite from '../../assets/sprites/bonus/ubuntu.png';
 import fedoraSprite from '../../assets/sprites/bonus/fedora.png';
 import debianSprite from '../../assets/sprites/bonus/debian.png';
@@ -12,6 +13,7 @@ import { BONUSES, BONUS_SPAWN_RATES } from './bonuses.js';
 
 // Mapping des sprites par ID
 const SPRITE_MAP = {
+    bird: birdSprite,
     ubuntu: ubuntuSprite,
     fedora: fedoraSprite,
     debian: debianSprite,
