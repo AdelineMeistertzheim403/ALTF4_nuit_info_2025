@@ -1,5 +1,6 @@
 import DraggableKey from "../components/DraggableKey";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
 
 export default function KeysPage() {
     const [keyData, setKeyData] = useState({
@@ -7,6 +8,21 @@ export default function KeysPage() {
         silver: null,
         bronze: null,
     });
+    const [visibleKeys, setVisibleKeys] = useState({
+        gold: false,
+        silver: false,
+        bronze: false,
+    });
+
+    useEffect(() => {
+        const saved = JSON.parse(localStorage.getItem("unlockedKeys") || "[]");
+
+        saved.forEach(k => {
+            setVisibleKeys(old => ({ ...old, [k]: true }));
+        });
+    }, []);
+
+
 
     const [rotations, setRotations] = useState({
         gold: 0,
@@ -84,7 +100,7 @@ export default function KeysPage() {
             }}
         >
             {/* KEYS */}
-            {!lockedKeys.gold && (
+            {visibleKeys.gold && !lockedKeys.gold && (
                 <DraggableKey
                     filename="golden_key.png"
                     initialX={10}
@@ -96,8 +112,7 @@ export default function KeysPage() {
                 />
             )}
 
-
-            {!lockedKeys.silver && (
+            {visibleKeys.silver && !lockedKeys.silver && (
                 <DraggableKey
                     filename="silver_key.png"
                     initialX={0}
@@ -109,7 +124,7 @@ export default function KeysPage() {
                 />
             )}
 
-            {!lockedKeys.bronze && (
+            {visibleKeys.bronze && !lockedKeys.bronze && (
                 <DraggableKey
                     filename="bronze_key.png"
                     initialX={0}
