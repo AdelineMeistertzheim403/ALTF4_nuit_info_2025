@@ -3,19 +3,14 @@ import Join from './Join';
 import Pseudo from './Pseudo';
 import Leave from './Leave';
 import Game from './Game';
-import LeaderBoard from './LeaderBoard'; // J'ai retiré Score qui semblait inutile ici
+import LeaderBoard from './LeaderBoard';
 
 function LaserGame() {
-    // États
     const [step, setStep] = useState('join'); 
     const [pseudo, setPseudo] = useState('');
-    const [score, setScore] = useState(0); // Nouvel état pour le score
+    const [score, setScore] = useState(0);
 
-    // --- Fonctions de gestion ---
-
-    const goToPseudo = () => {
-        setStep('pseudo');
-    };
+    const goToPseudo = () => { setStep('pseudo'); };
 
     const handlePseudoValidation = (name) => {
         setPseudo(name);
@@ -24,40 +19,42 @@ function LaserGame() {
 
     const handleQuit = () => {
         setPseudo('');
-        setScore(0); // On remet le score à zéro en quittant
+        setScore(0);
         setStep('join');
     };
 
-    // Fonction passée à Game pour augmenter le score
+    // Augmente le score (tir réussi)
     const handleShoot = () => {
-        setScore(prevScore => prevScore + 10); // +10 points par tir, par exemple
+        setScore(prev => prev + 10);
+    };
+
+    // --- NOUVEAU : Baisse le score (joueur touché) ---
+    const handlePlayerHit = (damage) => {
+        // On évite les scores négatifs si tu préfères, sinon retire Math.max
+        setScore(prev =>  prev - damage);
     };
 
     return (
         <div>
-            {step === 'join' && (
-                <Join onStart={goToPseudo} />
-            )}
+            {step === 'join' && <Join onStart={goToPseudo} />}
 
             {step === 'pseudo' && (
-                <Pseudo 
-                    onValidate={handlePseudoValidation} 
-                    onCancel={handleQuit} 
-                />
+                <Pseudo onValidate={handlePseudoValidation} onCancel={handleQuit} />
             )}
 
             {step === 'game' && (
                 <div>
-                    {/* On passe le score et le pseudo au LeaderBoard */}
-                    {/* Z-index élevé pour qu'il soit au-dessus du jeu */}
                     <div style={{ position: 'relative', zIndex: 10 }}>
                         <LeaderBoard pseudo={pseudo} score={score} />
                     </div>
 
-                    {/* On passe la fonction handleShoot au Jeu */}
-                    <Game pseudo={pseudo} onShoot={handleShoot} />
+                    {/* On passe onHit au jeu */}
+                    <Game 
+                        pseudo={pseudo} 
+                        onShoot={handleShoot} 
+                        onHit={handlePlayerHit} 
+                    />
                     
-                    {/* Bouton quitter au-dessus du jeu */}
                     <div style={{ position: 'relative', zIndex: 10 }}>
                         <Leave onQuit={handleQuit} />
                     </div>

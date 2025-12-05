@@ -16,6 +16,7 @@ export const patternAtom = atom({
 export const playingAtom = atom(false);
 
 export const soundControlsAtom = atom({
+  bpm: 120,
   reverbWet: 0.2,
   delayFeedback: 0.18,
   hatTone: 450,
@@ -26,3 +27,16 @@ export const soundControlsAtom = atom({
 });
 
 export const currentStepAtom = atom(0);
+
+export const muteAtom = atom({
+  kick: false,
+  kick808: false,
+  snare: false,
+  snare909: false,
+  hat: false,
+  clap: false,
+  bass: false,
+  fmBass: false,
+  pad: false,
+  keys: false,
+});
