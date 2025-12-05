@@ -10,14 +10,14 @@ function App() {
   return (
     <div className="App">
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/scenario" element={<Scenario />} />
+        <Route path="/" element={<Scenario />} />
+
         <Route path="/groovebox" element={<GrooveBoxMain/>}/>
 
         {/* exemple d'une autre route */}
         {/* <Route path="/about" element={<About />} /> */}
 
-        <Route path="*" element={<Home />} /> {/* Route 404 : redirige vers la page principale */}
+        <Route path="*" element={<Scenario />} /> {/* Route 404 : redirige vers la page principale */}
       </Routes>
     </div>
   );

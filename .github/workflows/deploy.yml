@@ -23,6 +23,7 @@ jobs:
           script: |
             cd ~/ALTF4_nuit_info_2025/ALTF4
             git pull
-            docker compose down --remove-orphans || true
-            docker rm -f hackaton-frontend hackaton-backend hackaton-db || true
+            # Nettoyage des anciens conteneurs qui pourraient bloquer le nommage
+            docker rm -f altf4-db-1 altf4-backend-1 altf4-frontend-1 altf4-frontend-dev-1 2>/dev/null || true
+            docker compose down --remove-orphans
             docker compose up -d --build

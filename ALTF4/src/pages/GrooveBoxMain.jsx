@@ -9,6 +9,7 @@ import { patternAtom, playingAtom, soundControlsAtom, currentStepAtom, muteAtom 
 import { initTone } from "../audio/toneInit";
 import { applyControls } from "../audio/instruments";
 import { startTransport, stopTransport, updateTransportControls, updateMutes } from "../audio/transport";
+import { useNavigate } from "react-router-dom";
 import "./groovebox.css";
 
 export default function GrooveBoxMain() {
@@ -17,6 +18,7 @@ export default function GrooveBoxMain() {
   const [controls, setControls] = useAtom(soundControlsAtom);
   const [, setCurrentStep] = useAtom(currentStepAtom);
   const [mutes] = useAtom(muteAtom);
+  const navigate = useNavigate();
 
   useEffect(() => {
     applyControls(controls);
@@ -55,7 +57,12 @@ export default function GrooveBoxMain() {
 
       <div className="groove-content">
         <div className="groove-header">
-          <h1 className="groove-title">GrooveBox Visualizer</h1>
+          <div className="groove-title-row">
+            <h1 className="groove-title">GrooveBox Visualizer</h1>
+            <button className="exit-btn" onClick={() => navigate("/")}>
+              Retour Scénario
+            </button>
+          </div>
           <div className="tempo-inline">
             <TempoSlider
               initialBpm={controls.bpm}
