@@ -20,6 +20,7 @@ import { Camera } from './camera/Camera';
 import { createWorld } from './world';
 import InputManager from '../../game/core/InputManager';
 import { spriteLoader } from '../../game/data/wasteSprites';
+import { bonusSpriteLoader } from '../../game/data/bonusSprites';
 import CollisionSystem from '../../game/systems/CollisionSystem';
 import './WareZone.css';
 
@@ -38,6 +39,13 @@ const CONFIG = {
     WASTE_SPAWN_RADIUS: 1500,  // Rayon de spawn autour du joueur
     WASTE_MIN_DISTANCE: 200,   // Distance minimale de spawn (éviter de spawn trop près)
     PICKUP_DISTANCE: 35,       // Distance pour ramasser un déchet
+
+    // Bonus
+    BONUS_COUNT: 5,            // Nombre de bonus sur la map
+    BONUS_SIZE: 50,            // Taille des sprites de bonus
+    BONUS_SPAWN_RADIUS: 1500,  // Rayon de spawn autour du joueur
+    BONUS_MIN_DISTANCE: 300,   // Distance minimale de spawn
+    BONUS_PICKUP_DISTANCE: 40, // Distance pour ramasser un bonus
 
     // Snake
     SEGMENT_SPACING: 35,       // Espacement entre les segments (augmenté pour plus d'air)
@@ -77,6 +85,12 @@ export function WareZone({
     // Déchets sur la map
     const wastesRef = useRef([]); // { x, y, sprite, image }
     const wastesInitializedRef = useRef(false);
+
+    // Bonus sur la map
+    const bonusesRef = useRef([]); // { x, y, spriteData, image, active }
+    const bonusesInitializedRef = useRef(false);
+    const activeBonusEffectsRef = useRef([]); // { effect, value, endTime }
+    const bonusPickupEffectsRef = useRef([]); // { x, y, color, startTime, duration }
 
     // Monde (sol avec textures)
     const worldRef = useRef(null);
@@ -118,6 +132,36 @@ export function WareZone({
     }, [spawnWasteAroundPlayer]);
 
     // ============================================
+    // INITIALISATION DES BONUS
+    // ============================================
+    const spawnBonusAroundPlayer = useCallback((centerX, centerY) => {
+        const angle = Math.random() * Math.PI * 2;
+        const distance = CONFIG.BONUS_MIN_DISTANCE + Math.random() * (CONFIG.BONUS_SPAWN_RADIUS - CONFIG.BONUS_MIN_DISTANCE);
+        const x = centerX + Math.cos(angle) * distance;
+        const y = centerY + Math.sin(angle) * distance;
+
+        const spriteData = bonusSpriteLoader.getRandomSprite();
+        const image = new Image();
+        image.src = spriteData.src;
+
+        return { x, y, spriteData, image, active: true };
+    }, []);
+
+    const spawnBonuses = useCallback(async () => {
+        // Charger tous les sprites de bonus
+        await bonusSpriteLoader.loadAll();
+
+        const bonuses = [];
+        const centerX = playerPositionRef.current.x;
+        const centerY = playerPositionRef.current.y;
+
+        for (let i = 0; i < CONFIG.BONUS_COUNT; i++) {
+            bonuses.push(spawnBonusAroundPlayer(centerX, centerY));
+        }
+        bonusesRef.current = bonuses;
+    }, [spawnBonusAroundPlayer]);
+
+    // ============================================
     // INITIALISATION DU MONDE (textures de sol)
     // ============================================
     useEffect(() => {
@@ -153,6 +197,12 @@ export function WareZone({
             wastesInitializedRef.current = true;
         }
 
+        // Spawner les bonus une seule fois
+        if (!bonusesInitializedRef.current) {
+            spawnBonuses();
+            bonusesInitializedRef.current = true;
+        }
+
         const camera = cameraRef.current;
 
         // La caméra suit la position du joueur
@@ -167,7 +217,7 @@ export function WareZone({
                 inputRef.current = null;
             }
         };
-    }, [dimensions, spawnWastes]);
+    }, [dimensions, spawnWastes, spawnBonuses]);
 
     // ============================================
     // DESSIN DE LA GRILLE INFINIE
@@ -246,11 +296,13 @@ export function WareZone({
             `Player: (${Math.round(player.x)}, ${Math.round(player.y)})`,
             `Viewport: ${dimensions.width}x${dimensions.height}`,
             `Wastes: ${wastesRef.current.length}`,
+            `Bonuses: ${bonusesRef.current.length}`,
             `Segments: ${segmentsRef.current.length}`,
+            `Active Effects: ${activeBonusEffectsRef.current.map(e => e.effect).join(', ') || 'None'}`,
         ];
 
         lines.forEach((line, i) => {
-            ctx.fillText(line, 10, dimensions.height - 75 + (i * 15));
+            ctx.fillText(line, 10, dimensions.height - 105 + (i * 15));
         });
     }, [dimensions]);
 
@@ -284,6 +336,12 @@ export function WareZone({
         } else if (input && input.isKeyPressed('ArrowDown')) {
             currentSpeed = 80; // Ralentir
             targetSpacing = CONFIG.SEGMENT_SPACING * 0.8; // Réduire légèrement l'espacement
+        }
+
+        // Appliquer les bonus de vitesse actifs
+        const speedBonus = activeBonusEffectsRef.current.find(e => e.effect === 'speed');
+        if (speedBonus) {
+            currentSpeed *= speedBonus.value;
         }
 
         // Interpolation douce de l'espacement (lerp)
@@ -327,7 +385,10 @@ export function WareZone({
             // Mettre à jour le score
             setTimeout(() => {
                 setScore(prev => {
-                    const newScore = prev + 10;
+                    // Vérifier si le bonus doublePoints est actif
+                    const doublePointsBonus = activeBonusEffectsRef.current.find(e => e.effect === 'doublePoints');
+                    const pointsMultiplier = doublePointsBonus ? doublePointsBonus.value : 1;
+                    const newScore = prev + (10 * pointsMultiplier);
                     if (onScoreChange) onScoreChange(newScore);
                     return newScore;
                 });
@@ -361,13 +422,16 @@ export function WareZone({
         });
 
         // ---- COLLISION AVEC SOI-MÊME ----
-        const collisionIndex = CollisionSystem.checkSelfCollision(
+        // Vérifier si le joueur est invincible
+        const isInvincible = activeBonusEffectsRef.current.some(e => e.effect === 'invincible');
+        
+        const collisionIndex = !isInvincible ? CollisionSystem.checkSelfCollision(
             playerPos,
             segmentsRef.current,
             positionHistoryRef.current,
             currentSpacingRef.current,
             CONFIG.SEGMENT_SIZE
-        );
+        ) : null;
 
         if (collisionIndex !== null) {
             // Couper le serpent à cet endroit
@@ -385,6 +449,94 @@ export function WareZone({
                 });
             }, 0);
         }
+
+        // ---- COLLISION AVEC LES BONUS ----
+        const { pickedWastes: pickedBonuses, remainingWastes: remainingBonuses } = CollisionSystem.checkWasteCollision(
+            playerPos,
+            bonusesRef.current.filter(b => b.active),
+            CONFIG.BONUS_PICKUP_DISTANCE
+        );
+
+        // Traiter les bonus ramassés
+        pickedBonuses.forEach(bonus => {
+            const bonusData = bonus.spriteData.data;
+            
+            // Créer un effet visuel au moment du ramassage
+            bonusPickupEffectsRef.current.push({
+                x: bonus.x,
+                y: bonus.y,
+                color: bonusData.color,
+                startTime: Date.now(),
+                duration: 800 // ms
+            });
+            
+            // Ajouter des points
+            setTimeout(() => {
+                setScore(prev => {
+                    // Vérifier si le bonus doublePoints est actif
+                    const doublePointsBonus = activeBonusEffectsRef.current.find(e => e.effect === 'doublePoints');
+                    const pointsMultiplier = doublePointsBonus ? doublePointsBonus.value : 1;
+                    const newScore = prev + (bonusData.points * pointsMultiplier);
+                    if (onScoreChange) onScoreChange(newScore);
+                    return newScore;
+                });
+            }, 0);
+
+            // Appliquer l'effet du bonus
+            if (bonusData.duration > 0) {
+                // Effet temporaire
+                activeBonusEffectsRef.current.push({
+                    effect: bonusData.effect,
+                    value: bonusData.value,
+                    endTime: Date.now() + bonusData.duration
+                });
+            } else {
+                // Effet permanent (comme grow)
+                if (bonusData.effect === 'grow') {
+                    for (let i = 0; i < bonusData.value; i++) {
+                        const randomWaste = wastesRef.current[Math.floor(Math.random() * wastesRef.current.length)];
+                        if (randomWaste) {
+                            segmentsRef.current.push({
+                                spriteData: randomWaste.spriteData,
+                                image: randomWaste.image
+                            });
+                        }
+                    }
+                }
+            }
+
+            // Respawn le bonus à un nouvel emplacement
+            const newBonus = spawnBonusAroundPlayer(playerPos.x, playerPos.y);
+            bonus.x = newBonus.x;
+            bonus.y = newBonus.y;
+            bonus.spriteData = newBonus.spriteData;
+            bonus.image = newBonus.image;
+        });
+
+        // Nettoyer les effets expirés
+        const now = Date.now();
+        activeBonusEffectsRef.current = activeBonusEffectsRef.current.filter(effect => effect.endTime > now);
+        bonusPickupEffectsRef.current = bonusPickupEffectsRef.current.filter(effect => {
+            return (now - effect.startTime) < effect.duration;
+        });
+
+        // ---- REPOSITIONNER LES BONUS TROP LOIN ----
+        bonusesRef.current.forEach(bonus => {
+            if (!bonus.active) return;
+            
+            const dx = bonus.x - playerPos.x;
+            const dy = bonus.y - playerPos.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // Si le bonus est hors du rayon de spawn, le repositionner
+            if (distance > CONFIG.BONUS_SPAWN_RADIUS) {
+                const newBonus = spawnBonusAroundPlayer(playerPos.x, playerPos.y);
+                bonus.x = newBonus.x;
+                bonus.y = newBonus.y;
+                bonus.spriteData = newBonus.spriteData;
+                bonus.image = newBonus.image;
+            }
+        });
 
         // Mettre à jour la caméra
         camera.update();
@@ -436,7 +588,120 @@ export function WareZone({
             }
         });
 
-        // 5. Dessiner les segments du snake (queue)
+        // 5. Dessiner les bonus sur la map
+        bonusesRef.current.forEach((bonus, index) => {
+            if (!bonus.active) return;
+            
+            if (camera.isVisible(bonus.x, bonus.y, CONFIG.BONUS_SIZE)) {
+                const screenPos = camera.worldToScreen(bonus.x, bonus.y);
+                if (bonus.image.complete) {
+                    const bonusData = bonus.spriteData.data;
+                    
+                    // Effet néon pulsant
+                    const time = Date.now() / 1000;
+                    const pulse = Math.sin(time * 3 + index) * 0.3 + 0.7; // Oscillation entre 0.4 et 1
+                    
+                    // Dessiner l'aura néon (plusieurs couches pour effet de glow)
+                    ctx.shadowColor = bonusData.color;
+                    ctx.shadowBlur = 25 * pulse;
+                    
+                    // Aura externe
+                    ctx.globalAlpha = 0.15 * pulse;
+                    ctx.fillStyle = bonusData.color;
+                    ctx.beginPath();
+                    ctx.arc(screenPos.x, screenPos.y, CONFIG.BONUS_SIZE / 2 + 15 * pulse, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Aura moyenne
+                    ctx.globalAlpha = 0.25 * pulse;
+                    ctx.beginPath();
+                    ctx.arc(screenPos.x, screenPos.y, CONFIG.BONUS_SIZE / 2 + 8 * pulse, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.globalAlpha = 1;
+                    
+                    // Dessiner le sprite du bonus avec ombre portée
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                    ctx.shadowBlur = 8;
+                    ctx.shadowOffsetX = 3;
+                    ctx.shadowOffsetY = 3;
+                    
+                    // Calculer les dimensions en respectant le ratio d'aspect
+                    // tout en gardant la même taille maximale pour tous les bonus
+                    const imgWidth = bonus.image.naturalWidth || bonus.image.width;
+                    const imgHeight = bonus.image.naturalHeight || bonus.image.height;
+                    const aspectRatio = imgWidth / imgHeight;
+                    
+                    let drawWidth, drawHeight;
+                    // Utiliser la dimension la plus grande comme référence
+                    const scale = Math.max(imgWidth, imgHeight);
+                    const targetSize = CONFIG.BONUS_SIZE;
+                    
+                    drawWidth = (imgWidth / scale) * targetSize;
+                    drawHeight = (imgHeight / scale) * targetSize;
+                    
+                    ctx.drawImage(
+                        bonus.image,
+                        screenPos.x - drawWidth / 2,
+                        screenPos.y - drawHeight / 2,
+                        drawWidth,
+                        drawHeight
+                    );
+                    
+                    // Réinitialiser les effets
+                    ctx.shadowBlur = 0;
+                    ctx.shadowOffsetX = 0;
+                    ctx.shadowOffsetY = 0;
+                }
+            }
+        });
+
+        // 5.5. Dessiner les effets de pickup de bonus
+        bonusPickupEffectsRef.current.forEach(effect => {
+            const elapsed = Date.now() - effect.startTime;
+            const progress = elapsed / effect.duration;
+            
+            if (camera.isVisible(effect.x, effect.y, 100)) {
+                const screenPos = camera.worldToScreen(effect.x, effect.y);
+                
+                // Cercles expansifs qui s'estompent
+                const radius = 20 + (progress * 60);
+                const alpha = 1 - progress;
+                
+                // Cercle externe
+                ctx.strokeStyle = effect.color;
+                ctx.globalAlpha = alpha * 0.6;
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.arc(screenPos.x, screenPos.y, radius, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // Cercle interne
+                ctx.globalAlpha = alpha * 0.8;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(screenPos.x, screenPos.y, radius * 0.6, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // Particules qui s'échappent
+                for (let i = 0; i < 8; i++) {
+                    const angle = (Math.PI * 2 * i) / 8;
+                    const particleRadius = radius * 1.2;
+                    const px = screenPos.x + Math.cos(angle) * particleRadius;
+                    const py = screenPos.y + Math.sin(angle) * particleRadius;
+                    
+                    ctx.fillStyle = effect.color;
+                    ctx.globalAlpha = alpha;
+                    ctx.beginPath();
+                    ctx.arc(px, py, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.globalAlpha = 1;
+            }
+        });
+
+        // 6. Dessiner les segments du snake (queue)
         segmentsRef.current.forEach((segment, index) => {
             // Calculer la position du segment en parcourant l'historique
             // en utilisant l'espacement dynamique actuel
@@ -490,7 +755,7 @@ export function WareZone({
             }
         });
 
-        // 6. Dessiner la tête du snake (triangle)
+        // 7. Dessiner la tête du snake (triangle)
         const playerScreen = camera.worldToScreen(
             playerPositionRef.current.x,
             playerPositionRef.current.y
@@ -516,12 +781,12 @@ export function WareZone({
 
         ctx.restore();
 
-        // 7. Debug info
+        // 8. Debug info
         if (debug || CONFIG.DEBUG) {
             drawDebugInfo(ctx, camera, deltaTime);
         }
 
-    }, [ctx, isPaused, gameState, fill, drawGrid, drawOrigin, drawDebugInfo, debug, onScoreChange, spawnWasteAroundPlayer]);
+    }, [ctx, isPaused, gameState, fill, drawGrid, drawOrigin, drawDebugInfo, debug, onScoreChange, spawnWasteAroundPlayer, spawnBonusAroundPlayer]);
 
     // Démarrer la boucle
     useGameLoop({
