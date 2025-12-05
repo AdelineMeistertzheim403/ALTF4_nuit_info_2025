@@ -1237,13 +1237,15 @@ export function WareZone({
                         <p>Appuie sur ESPACE pour continuer</p>
                     </div>
                 )}
+            </div>
 
-                {gameState === 'gameover' && (
-                    <div className="warezone__gameover">
-                        <h2>GAME OVER</h2>
-                        <p>Score final: {score}</p>
-                    </div>
-                )}
+            {/* Overlay cyberpunk Blade Runner */}
+            <div className="warezone__dark-vignette"></div>
+            <div className="warezone__cyberpunk-overlay">
+                <div className="warezone__neon-border-top"></div>
+                <div className="warezone__neon-border-bottom"></div>
+                <div className="warezone__neon-border-left"></div>
+                <div className="warezone__neon-border-right"></div>
             </div>
         </div>
     );
