@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Enemy from './Enemy';
+import LeaderBoard from './LeaderBoard'; 
 
-// Tes imports d'images...
+// ... Vos imports d'images et sons (inchangés) ...
 import appleImg from '../../SnakeSouls/assets/sprites/enemies/apple.png';
 import chromeImg from '../../SnakeSouls/assets/sprites/enemies/chrome.png';
 import huaweiImg from '../../SnakeSouls/assets/sprites/enemies/huawei.png';
@@ -17,73 +18,111 @@ function rand(min, max) {
     return Math.random() * (max - min) + min;
 }
 
+const GameHUD = ({ score, timeLeft }) => {
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+    const formattedTime = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+
+    return (
+        <div style={{
+            position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)',
+            display: 'flex', gap: '40px', color: 'white', fontFamily: 'monospace',
+            fontSize: '28px', fontWeight: 'bold', zIndex: 10, pointerEvents: 'none',
+            textShadow: '2px 2px 0 #000'
+        }}>
+            <div style={{ color: timeLeft <= 10 ? '#ff4444' : 'white' }}>⏳ {formattedTime}</div>
+            <div style={{ color: '#44ff44' }}>★ {score}</div>
+        </div>
+    );
+};
+
 function Game({ pseudo, onShoot, onHit }) {
+    const [score, setScore] = useState(0);
+    const [timeLeft, setTimeLeft] = useState(180); 
+    const [isGameOver, setIsGameOver] = useState(false);
+
     const [blasts, setBlasts] = useState([]);
     const [enemies, setEnemies] = useState([]);
     const [bullets, setBullets] = useState([]);
 
     const laserSound = new Audio(laser);
-    const damageSound = new Audio(damage);
     
-    // 1. CORRECTION BUG : On utilise useRef pour la souris et les callbacks
-    // Cela évite de redémarrer la boucle useEffect à chaque mouvement ou changement de score
     const mousePosRef = useRef({ x: window.innerWidth/2, y: window.innerHeight/2 });
     const onHitRef = useRef(onHit);
     const onShootRef = useRef(onShoot);
-
-    const enemyImages = [appleImg, chromeImg, huaweiImg, ibmImg, nvidiaImg, oracleImg, samsungImg, windowsImg];
     const rafRef = useRef(null);
 
-    // Mettre à jour les refs quand les props changent
+    const enemyImages = [appleImg, chromeImg, huaweiImg, ibmImg, nvidiaImg, oracleImg, samsungImg, windowsImg];
+
     useEffect(() => {
         onHitRef.current = onHit;
         onShootRef.current = onShoot;
     }, [onHit, onShoot]);
 
-    // Gestion de la souris via Ref (ne déclenche pas de re-render du composant, juste maj de la valeur)
+    // --- LOGIQUE DE REJOUER / QUITTER ---
+    const handleReplay = () => {
+        setScore(0);
+        setTimeLeft(10); // Réinitialiser le temps (remettre à 300 pour 5min)
+        setEnemies([]);
+        setBullets([]);
+        setBlasts([]);
+        setIsGameOver(false); // Cela relancera les useEffects
+    };
+
+    const handleQuit = () => {
+        // Redirige vers l'accueil ou recharge la page
+        window.location.reload(); 
+    };
+
+    // --- GESTION DU TIMER ---
     useEffect(() => {
-        const onMove = (e) => {
-            mousePosRef.current = { x: e.clientX, y: e.clientY };
-        };
+        if (isGameOver) return;
+
+        const timerInterval = setInterval(() => {
+            setTimeLeft(prev => {
+                if (prev <= 1) {
+                    clearInterval(timerInterval);
+                    setIsGameOver(true);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(timerInterval);
+    }, [isGameOver]);
+
+    // Gestion souris
+    useEffect(() => {
+        const onMove = (e) => { mousePosRef.current = { x: e.clientX, y: e.clientY }; };
         window.addEventListener('mousemove', onMove);
         return () => window.removeEventListener('mousemove', onMove);
     }, []);
 
-    // Spawning des ennemis (Limité à 10)
-    // Spawning des ennemis (Objectif : toujours 10 visibles)
+    // Spawning
     useEffect(() => {
-        // On réduit l'intervalle (800ms au lieu de 1200ms) pour remplir l'écran plus vite
+        if (isGameOver) return;
+
         const spawnInterval = 800; 
-        
         const spawnTimer = setInterval(() => {
             setEnemies(prev => {
-                // Si on a déjà 10 ennemis, on ne fait rien
                 if (prev.length >= 10) return prev;
-
+                
                 const edge = Math.floor(rand(0, 4));
                 const w = window.innerWidth;
                 const h = window.innerHeight;
                 let x, y;
-
-                // Position de départ (Hors écran)
                 switch(edge) {
-                    case 0: x = rand(0, w); y = -60; break; // Haut
-                    case 1: x = w + 60; y = rand(0, h); break; // Droite
-                    case 2: x = rand(0, w); y = h + 60; break; // Bas
-                    case 3: x = -60; y = rand(0, h); break; // Gauche
+                    case 0: x = rand(0, w); y = -60; break;
+                    case 1: x = w + 60; y = rand(0, h); break;
+                    case 2: x = rand(0, w); y = h + 60; break;
+                    case 3: x = -60; y = rand(0, h); break;
                     default: x = rand(0, w); y = -60;
                 }
-
-                // --- CORRECTION MAJEURE ICI ---
-                // Au lieu d'un angle au hasard, on vise le centre de l'écran !
-                // Math.atan2(dy, dx) donne l'angle entre le point de spawn et le centre
                 const angleToCenter = Math.atan2((h / 2) - y, (w / 2) - x);
-                
-                // On ajoute un peu de variation (-0.5 à +0.5 radians) pour qu'ils ne foncent pas tous pile au milieu
                 const angle = angleToCenter + rand(-0.5, 0.5);
-
                 const img = enemyImages[Math.floor(rand(0, enemyImages.length))];
-                const speed = rand(2, 4); // Un peu plus rapide pour entrer vite
+                const speed = rand(2, 4);
 
                 return [...prev, {
                     id: Date.now() + Math.floor(Math.random() * 10000),
@@ -100,62 +139,47 @@ function Game({ pseudo, onShoot, onHit }) {
         }, spawnInterval);
 
         return () => clearInterval(spawnTimer);
-    }, []);
+    }, [isGameOver]);
 
-    // Boucle de jeu principale
+    // Boucle de jeu
     useEffect(() => {
+        if (isGameOver) {
+            cancelAnimationFrame(rafRef.current);
+            return;
+        }
+
         const step = () => {
             const width = window.innerWidth;
             const height = window.innerHeight;
-            // On lit la position souris depuis la Ref
             const mx = mousePosRef.current.x;
             const my = mousePosRef.current.y;
 
-            // 1. Ennemis
+            // 1. Mouvement Ennemis
             setEnemies(prev => prev.map(ent => {
                 let nx = ent.x + ent.vx;
                 let ny = ent.y + ent.vy;
                 let hasEntered = ent.entered;
 
-                // (Code de gestion des murs et entrée d'écran... inchangé)
                 if (!hasEntered) {
                     if (nx > 0 && nx < width && ny > 0 && ny < height) hasEntered = true;
                 } else {
                     const r = ent.size / 2;
-                    if (nx < r || nx > width - r) {
-                        ent.vx *= -1;
-                        nx = Math.max(r, Math.min(nx, width - r));
-                    }
-                    if (ny < r || ny > height - r) {
-                        ent.vy *= -1;
-                        ny = Math.max(r, Math.min(ny, height - r));
-                    }
+                    if (nx < r || nx > width - r) { ent.vx *= -1; nx = Math.max(r, Math.min(nx, width - r)); }
+                    if (ny < r || ny > height - r) { ent.vy *= -1; ny = Math.max(r, Math.min(ny, height - r)); }
                 }
 
-                // --- MODIFICATION ICI : Ajout d'aléatoire + Limitation de vitesse ---
-
-                // 1. On ajoute la variation aléatoire (comme avant)
-                if (Math.random() < 0.05) { // J'ai augmenté un peu la proba (0.01 -> 0.05) pour qu'ils bougent plus
+                if (Math.random() < 0.05) {
                     ent.vx += rand(-0.5, 0.5);
                     ent.vy += rand(-0.5, 0.5);
                 }
 
-                // 2. On impose la vitesse max (C'est nouveau)
-                const MAX_SPEED = 5; // Tu peux ajuster cette valeur (par ex: 4, 6, 8)
-                
-                // Math.hypot calcule la longueur du vecteur vitesse (racine carrée de x²+y²)
+                const MAX_SPEED = 5;
                 const currentSpeed = Math.hypot(ent.vx, ent.vy); 
-
                 if (currentSpeed > MAX_SPEED) {
-                    // On calcule le ratio de réduction nécessaire
                     const ratio = MAX_SPEED / currentSpeed;
-                    // On applique ce ratio pour ralentir sans changer la direction
                     ent.vx *= ratio;
                     ent.vy *= ratio;
                 }
-
-                // ------------------------------------------------------------------
-
                 return { ...ent, x: nx, y: ny, entered: hasEntered };
             }));
 
@@ -166,32 +190,20 @@ function Game({ pseudo, onShoot, onHit }) {
                 const firingEnemies = [...prev];
                 firingEnemies.forEach(ent => {
                     if (now - ent.lastShot > ent.shootCooldown) {
-                        
-                        // 1. Calculer la distance et l'angle vers la souris (ref)
                         const dx = mx - ent.x; 
                         const dy = my - ent.y; 
-                        
-                        // Math.atan2 donne l'angle exact (en radians) vers le joueur
                         const perfectAngle = Math.atan2(dy, dx);
-
-                        // 2. Ajouter de l'imprécision (Spread)
-                        // Une valeur de 0.2 correspond environ à +/- 11 degrés d'erreur.
-                        // Plus le chiffre est grand, moins ils sont précis.
                         const spread = 0.1; 
                         const angle = perfectAngle + rand(-spread, spread);
-
                         const speed = 5;
                         
                         setBullets(bPrev => [...bPrev, {
                             id: now + Math.floor(Math.random()*100000),
-                            x: ent.x,
-                            y: ent.y,
-                            // 3. Convertir l'angle final en vitesse X et Y
+                            x: ent.x, y: ent.y,
                             vx: Math.cos(angle) * speed,
                             vy: Math.sin(angle) * speed,
                             from: 'enemy'
                         }]);
-
                         ent.lastShot = now;
                         ent.shootCooldown = rand(800, 2500);
                     }
@@ -205,21 +217,15 @@ function Game({ pseudo, onShoot, onHit }) {
             // 4. Collisions
             setBullets(prev => prev.filter(b => {
                 if (b.from === 'enemy') {
-                    // Vérification collision avec la souris (ref)
                     const d = Math.hypot(b.x - mx, b.y - my);
-                    
                     if (d < 20) {
-                        // --- CORRECTION SONORE ICI ---
-                        // On crée une nouvelle instance audio et on la joue directement
-                        // Cela permet de jouer le son même si le précédent n'est pas fini (superposition)
                         const hitSound = new Audio(damage);
-                        hitSound.volume = 0.5; // Optionnel : baisser un peu le volume si c'est trop fort
+                        hitSound.volume = 0.5;
                         hitSound.play(); 
-
                         if (onHitRef.current) onHitRef.current(5);
-                        return false; // Supprime la balle IMMÉDIATEMENT
+                        setScore(s => s - 5); 
+                        return false; 
                     }
-                    
                     if (b.x < -100 || b.x > width + 100 || b.y < -100 || b.y > height + 100) return false;
                 }
                 return true;
@@ -230,31 +236,57 @@ function Game({ pseudo, onShoot, onHit }) {
 
         rafRef.current = requestAnimationFrame(step);
         return () => cancelAnimationFrame(rafRef.current);
-    }, []); // Dépendance vide = boucle stable qui ne reset pas
+    }, [isGameOver]); 
 
+    // Gestion du tir JOUEUR
     const handleClick = (e) => {
+        if (isGameOver) return; 
+
         const id = Date.now();
-        laserSound.play();
+        const s = laserSound.cloneNode();
+        s.play();
+
         const newBlast = { id, x: e.clientX, y: e.clientY };
         setBlasts((prev) => [...prev, newBlast]);
 
         const explosionRadius = 60;
         setEnemies(prev => {
             const survivors = [];
+            let pointsGained = 0; 
+
             prev.forEach(ent => {
                 const d = Math.hypot(ent.x - newBlast.x, ent.y - newBlast.y);
                 if (d < explosionRadius + ent.size/2) {
                     if (onShootRef.current) onShootRef.current();
+                    pointsGained += 20; 
                 } else {
                     survivors.push(ent);
                 }
             });
+
+            if (pointsGained > 0) {
+                setScore(s => s + pointsGained);
+            }
+
             return survivors;
         });
 
         setTimeout(() => setBlasts(p => p.filter(b => b.id !== id)), 400);
     };
 
+    // --- CONDITION DE FIN ---
+    if (isGameOver) {
+        return (
+            <LeaderBoard 
+                score={score} 
+                pseudo={pseudo} 
+                onReplay={handleReplay} // On passe la fonction ici
+                onQuit={handleQuit}     // et ici
+            />
+        );
+    }
+
+    // Rendu du jeu (inchangé)
     return (
         <div 
             onClick={handleClick}
@@ -263,13 +295,8 @@ function Game({ pseudo, onShoot, onHit }) {
                 cursor: 'none', zIndex: 1, background: 'transparent', overflow: 'hidden'
             }}
         >
-            {/* Curseur Joueur : On utilise mousePosRef.current directement ? 
-               Non, React ne re-rend pas le visuel si on change une ref. 
-               ASTUCE : Pour l'affichage du curseur SEULEMENT, on peut utiliser un petit state local 
-               ou une div qui suit la souris via CSS direct si on veut perf max, 
-               mais ici on va utiliser un petit listener dédié pour l'affichage visuel */}
+            <GameHUD score={score} timeLeft={timeLeft} />
             <VisualCursor />
-
             {blasts.map((blast) => (
                 <div key={blast.id} style={{
                         position: 'absolute', left: blast.x, top: blast.y,
@@ -278,7 +305,6 @@ function Game({ pseudo, onShoot, onHit }) {
                     <div className="laser-blast"></div>
                 </div>
             ))}
-            
             <style>{`
                 @keyframes blastAnim {
                     0% { width: 0px; height: 0px; opacity: 1; background: white; }
@@ -291,38 +317,19 @@ function Game({ pseudo, onShoot, onHit }) {
                     box-shadow: 0 0 10px red, 0 0 20px orange;
                 }
             `}</style>
-
-            // ... dans le return du composant Game ...
-
             {enemies.map(ent => (
                 <Enemy key={ent.id} x={ent.x} y={ent.y} size={ent.size} img={ent.img} />
             ))}
-
-            {/* --- MODIFICATION ICI : Rendu des balles --- */}
             {bullets.map(b => {
-                // 1. Calculer l'angle de rotation basé sur la direction (vx, vy)
-                // Math.atan2(y, x) donne l'angle en radians.
                 const angleRad = Math.atan2(b.vy, b.vx);
-                // On convertit en degrés pour le CSS
                 const angleDeg = angleRad * (180 / Math.PI);
-
                 return (
                     <div key={b.id} style={{
-                        position: 'absolute', 
-                        left: b.x, 
-                        top: b.y, 
-                        // 2. On applique la rotation. Important : translate d'abord pour centrer, puis rotate.
+                        position: 'absolute', left: b.x, top: b.y, 
                         transform: `translate(-50%, -50%) rotate(${angleDeg}deg)`,
-                        // 3. Nouveau style : un trait rouge long et fin
-                        width: 24,     // Longueur du laser
-                        height: 4,      // Épaisseur du laser
-                        borderRadius: '2px', // Légèrement arrondi aux bouts
-                        backgroundColor: '#ff0000', // Rouge vif
-                        // Une lueur rouge plus intense et un peu plus "étalée" pour l'effet laser
+                        width: 24, height: 4, borderRadius: '2px', backgroundColor: '#ff0000', 
                         boxShadow: '0 0 4px #ff0000, 0 0 8px rgba(255, 50, 50, 0.8)', 
-                        pointerEvents: 'none',
-                        // Optionnel : pour que le point d'origine du tir soit un peu devant
-                        transformOrigin: 'center center' 
+                        pointerEvents: 'none', transformOrigin: 'center center' 
                     }} />
                 );
             })}
@@ -330,7 +337,6 @@ function Game({ pseudo, onShoot, onHit }) {
     );
 }
 
-// Petit composant séparé pour gérer l'affichage du curseur sans impacter la boucle de jeu
 const VisualCursor = () => {
     const [pos, setPos] = useState({ x: -100, y: -100 });
     useEffect(() => {
