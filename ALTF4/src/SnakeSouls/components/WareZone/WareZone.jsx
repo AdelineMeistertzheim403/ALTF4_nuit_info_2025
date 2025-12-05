@@ -21,6 +21,7 @@ import { createWorld } from './world';
 import InputManager from '../../game/core/InputManager';
 import { spriteLoader } from '../../game/data/wasteSprites';
 import CollisionSystem from '../../game/systems/CollisionSystem';
+import { EnemyManager } from '../../game/systems/EnemyManager';
 import './WareZone.css';
 
 // ============================================
@@ -81,6 +82,15 @@ export function WareZone({
     // Monde (sol avec textures)
     const worldRef = useRef(null);
     const worldInitializedRef = useRef(false);
+
+    // Ennemis
+    const enemyManagerRef = useRef(new EnemyManager({
+        maxEnemies: 3,
+        spawnInterval: 8,
+        initialDelay: 5,
+        spawnRadius: 800,
+        minSpawnDistance: 400
+    }));
 
     // ---- State ----
     const [score, setScore] = useState(0);
@@ -247,6 +257,7 @@ export function WareZone({
             `Viewport: ${dimensions.width}x${dimensions.height}`,
             `Wastes: ${wastesRef.current.length}`,
             `Segments: ${segmentsRef.current.length}`,
+            `Enemies: ${enemyManagerRef.current.enemies.length}`,
         ];
 
         lines.forEach((line, i) => {
@@ -373,13 +384,55 @@ export function WareZone({
             // Couper le serpent à cet endroit
             const segmentsLost = segmentsRef.current.length - collisionIndex;
             segmentsRef.current = segmentsRef.current.slice(0, collisionIndex);
-            
+
             // Soustraire les points (10 points par segment perdu)
             const pointsLost = segmentsLost * 10;
-            
+
             setTimeout(() => {
                 setScore(prev => {
                     const newScore = Math.max(0, prev - pointsLost);
+                    if (onScoreChange) onScoreChange(newScore);
+                    return newScore;
+                });
+            }, 0);
+        }
+
+        // ---- MISE À JOUR DES ENNEMIS ----
+        const enemyManager = enemyManagerRef.current;
+        const gameStateForEnemies = {
+            wastes: wastesRef.current,
+            playerPos: {
+                x: playerPositionRef.current.x,
+                y: playerPositionRef.current.y,
+                angle: playerAngleRef.current
+            },
+            playerSegments: segmentsRef.current
+        };
+
+        enemyManager.update(deltaTime, gameStateForEnemies);
+
+        // Les ennemis peuvent avoir mangé des déchets, mettre à jour la référence
+        wastesRef.current = gameStateForEnemies.wastes;
+
+        // Respawn les déchets mangés par les ennemis
+        while (wastesRef.current.length < CONFIG.WASTE_COUNT) {
+            const newWaste = spawnWasteAroundPlayer(playerPos.x, playerPos.y);
+            wastesRef.current.push(newWaste);
+        }
+
+        // ---- COLLISION JOUEUR VS ENNEMIS ----
+        const enemyCollision = enemyManager.checkPlayerCollision(
+            playerPos,
+            segmentsRef.current,
+            positionHistoryRef.current,
+            currentSpacingRef.current
+        );
+
+        if (enemyCollision) {
+            // Le joueur a touché un ennemi - perdre des points
+            setTimeout(() => {
+                setScore(prev => {
+                    const newScore = Math.max(0, prev - 50);
                     if (onScoreChange) onScoreChange(newScore);
                     return newScore;
                 });
@@ -436,7 +489,10 @@ export function WareZone({
             }
         });
 
-        // 5. Dessiner les segments du snake (queue)
+        // 5. Dessiner les ennemis
+        enemyManagerRef.current.render(ctx, camera);
+
+        // 6. Dessiner les segments du snake (queue)
         segmentsRef.current.forEach((segment, index) => {
             // Calculer la position du segment en parcourant l'historique
             // en utilisant l'espacement dynamique actuel
