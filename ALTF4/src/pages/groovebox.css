@@ -77,6 +77,17 @@
   text-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
 }
 
+.groove-header {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tempo-inline {
+  width: 100%;
+}
+
 .play-toggle {
   align-self: center;
   margin-top: 6px;
@@ -115,9 +126,10 @@
 
 .tone-panel__header {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   margin-bottom: 14px;
 }
 
@@ -133,10 +145,28 @@
   font-size: 13px;
 }
 
+.tone-panel__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.tone-panel__right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .tone-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
+}
+
+.tempo-row {
+  display: none;
 }
 
 .tone-control {
@@ -167,16 +197,9 @@
 }
 
 .tone-toggle {
-  margin-top: 12px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   font-size: 13px;
   color: #d9e0ec;
-}
-
-.tone-actions {
-  margin-top: 18px;
-  display: flex;
-  justify-content: center;
 }

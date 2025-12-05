@@ -16,6 +16,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .track .label {
@@ -53,6 +54,29 @@
 .step.playing {
   outline: 2px solid #ffee00;
   box-shadow: 0 0 12px #ffee00;
+}
+
+.mute-btn {
+  margin-left: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #2c3142;
+  background: #0d0f17;
+  color: #dce6f5;
+  font-size: 12px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.mute-btn:hover {
+  border-color: #00eaff;
+  color: #00eaff;
+}
+
+.mute-btn.muted {
+  background: #2a2f3d;
+  border-color: #ff6b6b;
+  color: #ffbcbc;
 }
 
 /* --- Controls (Play, Stop, Reset...) --- */

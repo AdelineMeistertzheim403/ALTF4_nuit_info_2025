@@ -20,8 +20,21 @@ export default function ToneControls({ action }) {
   return (
     <div className="tone-panel">
       <div className="tone-panel__header">
-        <h3 className="tone-panel__title">Potentiomètres</h3>
-        <p className="tone-panel__subtitle">Façonne la couleur des sons en temps réel.</p>
+        <div>
+          <h3 className="tone-panel__title">Potentiomètres</h3>
+          <p className="tone-panel__subtitle">Façonne la couleur des sons en temps réel.</p>
+        </div>
+        <div className="tone-panel__right">
+          <label className="tone-toggle">
+            <input
+              type="checkbox"
+              checked={controls.arpOn}
+              onChange={(e) => onChange("arpOn", e.target.checked)}
+            />
+            <span>Arpégiateur</span>
+          </label>
+          {action ? <div className="tone-panel__actions">{action}</div> : null}
+        </div>
       </div>
 
       <div className="tone-grid">
@@ -47,17 +60,6 @@ export default function ToneControls({ action }) {
           );
         })}
       </div>
-
-      <label className="tone-toggle">
-        <input
-          type="checkbox"
-          checked={controls.arpOn}
-          onChange={(e) => onChange("arpOn", e.target.checked)}
-        />
-        <span>Arpégiateur (pad/keys)</span>
-      </label>
-
-      {action ? <div className="tone-actions">{action}</div> : null}
     </div>
   );
 }
