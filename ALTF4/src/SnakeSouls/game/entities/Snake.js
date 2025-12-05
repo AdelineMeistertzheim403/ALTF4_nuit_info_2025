@@ -11,7 +11,7 @@ export default class Snake extends Entity {
     this.speed = 2;
     this.turnSpeed = 0.08;
     this.segmentRadius = 8;
-    this.segmentSpacing = 12;
+    this.segmentSpacing = 10; // Réduit de 12 à 10 pour segments plus serrés
     this.lives = 3;
     this.score = 0;
     this.activeEffects = new Map();

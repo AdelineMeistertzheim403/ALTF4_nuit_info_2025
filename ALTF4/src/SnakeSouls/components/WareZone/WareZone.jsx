@@ -19,6 +19,7 @@ import { useGameLoop } from './hooks/useGameLoop';
 import { Camera } from './camera/Camera';
 import InputManager from '../../game/core/InputManager';
 import { spriteLoader } from '../../game/data/wasteSprites';
+import CollisionSystem from '../../game/systems/CollisionSystem';
 import './WareZone.css';
 
 // ============================================
@@ -37,7 +38,7 @@ const CONFIG = {
     PICKUP_DISTANCE: 35,       // Distance pour ramasser un déchet
 
     // Snake
-    SEGMENT_SPACING: 25,       // Espacement entre les segments
+    SEGMENT_SPACING: 35,       // Espacement entre les segments (augmenté pour plus d'air)
     SEGMENT_SIZE: 30,          // Taille des segments
 
     // Debug
@@ -63,6 +64,7 @@ export function WareZone({
     const playerPositionRef = useRef({ x: 0, y: 0 });
     const playerAngleRef = useRef(0); // Angle en radians
     const playerSpeedRef = useRef(150); // Pixels par seconde
+    const currentSpacingRef = useRef(35); // Espacement actuel (dynamique)
 
     // Historique des positions pour les segments
     const positionHistoryRef = useRef([]);
@@ -243,12 +245,19 @@ export function WareZone({
 
         // Vitesse avec flèches haut/bas
         let currentSpeed = playerSpeedRef.current;
+        let targetSpacing = CONFIG.SEGMENT_SPACING; // Espacement cible
+        
         if (input && input.isKeyPressed('ArrowUp')) {
             currentSpeed = 250; // Accélérer
-        }
-        if (input && input.isKeyPressed('ArrowDown')) {
+            targetSpacing = CONFIG.SEGMENT_SPACING * 1.3; // Augmenter l'espacement de 30%
+        } else if (input && input.isKeyPressed('ArrowDown')) {
             currentSpeed = 80; // Ralentir
+            targetSpacing = CONFIG.SEGMENT_SPACING * 0.8; // Réduire légèrement l'espacement
         }
+
+        // Interpolation douce de l'espacement (lerp)
+        const lerpSpeed = 5; // Vitesse de transition (plus grand = plus rapide)
+        currentSpacingRef.current += (targetSpacing - currentSpacingRef.current) * lerpSpeed * deltaTime;
 
         // Déplacer le joueur dans la direction de l'angle
         playerPositionRef.current.x += Math.cos(playerAngleRef.current) * currentSpeed * deltaTime;
@@ -261,51 +270,76 @@ export function WareZone({
             angle: playerAngleRef.current
         });
 
-        // Limiter la taille de l'historique
-        const maxHistory = (segmentsRef.current.length + 1) * CONFIG.SEGMENT_SPACING + 100;
+        // Limiter la taille de l'historique basée sur l'espacement dynamique
+        const maxHistory = Math.ceil((segmentsRef.current.length + 1) * currentSpacingRef.current * 1.5) + 100;
         if (positionHistoryRef.current.length > maxHistory) {
             positionHistoryRef.current.pop();
         }
 
         // ---- COLLISION AVEC LES DÉCHETS ----
-        const playerX = playerPositionRef.current.x;
-        const playerY = playerPositionRef.current.y;
+        const playerPos = { x: playerPositionRef.current.x, y: playerPositionRef.current.y };
+        
+        const { pickedWastes, remainingWastes } = CollisionSystem.checkWasteCollision(
+            playerPos,
+            wastesRef.current,
+            CONFIG.PICKUP_DISTANCE
+        );
 
-        wastesRef.current = wastesRef.current.filter(waste => {
-            const dx = waste.x - playerX;
-            const dy = waste.y - playerY;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+        // Traiter les déchets ramassés
+        pickedWastes.forEach(waste => {
+            // Ajouter comme segment
+            segmentsRef.current.push({
+                spriteData: waste.spriteData,
+                image: waste.image
+            });
 
-            if (distance < CONFIG.PICKUP_DISTANCE) {
-                // Ramasser le déchet - l'ajouter comme segment
-                segmentsRef.current.push({
-                    spriteData: waste.spriteData,
-                    image: waste.image
+            // Mettre à jour le score
+            setTimeout(() => {
+                setScore(prev => {
+                    const newScore = prev + 10;
+                    if (onScoreChange) onScoreChange(newScore);
+                    return newScore;
                 });
+            }, 0);
 
-                // Mettre à jour le score (utiliser setTimeout pour éviter setState pendant render)
-                setTimeout(() => {
-                    setScore(prev => {
-                        const newScore = prev + 10;
-                        if (onScoreChange) onScoreChange(newScore);
-                        return newScore;
-                    });
-                }, 0);
-
-                // Spawner un nouveau déchet ailleurs
-                const angle = Math.random() * Math.PI * 2;
-                const dist = Math.random() * CONFIG.WASTE_SPAWN_RADIUS;
-                const newX = Math.cos(angle) * dist;
-                const newY = Math.sin(angle) * dist;
-                const spriteData = spriteLoader.getRandomSprite();
-                const image = new Image();
-                image.src = spriteData.src;
-                wastesRef.current.push({ x: newX, y: newY, spriteData, image });
-
-                return false; // Supprimer ce déchet
-            }
-            return true; // Garder ce déchet
+            // Spawner un nouveau déchet ailleurs
+            const angle = Math.random() * Math.PI * 2;
+            const dist = Math.random() * CONFIG.WASTE_SPAWN_RADIUS;
+            const newX = Math.cos(angle) * dist;
+            const newY = Math.sin(angle) * dist;
+            const spriteData = spriteLoader.getRandomSprite();
+            const image = new Image();
+            image.src = spriteData.src;
+            wastesRef.current.push({ x: newX, y: newY, spriteData, image });
         });
+
+        wastesRef.current = remainingWastes;
+
+        // ---- COLLISION AVEC SOI-MÊME ----
+        const collisionIndex = CollisionSystem.checkSelfCollision(
+            playerPos,
+            segmentsRef.current,
+            positionHistoryRef.current,
+            currentSpacingRef.current,
+            CONFIG.SEGMENT_SIZE
+        );
+
+        if (collisionIndex !== null) {
+            // Couper le serpent à cet endroit
+            const segmentsLost = segmentsRef.current.length - collisionIndex;
+            segmentsRef.current = segmentsRef.current.slice(0, collisionIndex);
+            
+            // Soustraire les points (10 points par segment perdu)
+            const pointsLost = segmentsLost * 10;
+            
+            setTimeout(() => {
+                setScore(prev => {
+                    const newScore = Math.max(0, prev - pointsLost);
+                    if (onScoreChange) onScoreChange(newScore);
+                    return newScore;
+                });
+            }, 0);
+        }
 
         // Mettre à jour la caméra
         camera.update();
@@ -355,9 +389,31 @@ export function WareZone({
 
         // 5. Dessiner les segments du snake (queue)
         segmentsRef.current.forEach((segment, index) => {
-            // Calculer la position du segment basée sur l'historique
-            const historyIndex = (index + 1) * CONFIG.SEGMENT_SPACING;
-            const pos = positionHistoryRef.current[historyIndex];
+            // Calculer la position du segment en parcourant l'historique
+            // en utilisant l'espacement dynamique actuel
+            let distanceNeeded = (index + 1) * currentSpacingRef.current;
+            let accumulatedDistance = 0;
+            let pos = null;
+
+            for (let i = 1; i < positionHistoryRef.current.length; i++) {
+                const prev = positionHistoryRef.current[i - 1];
+                const curr = positionHistoryRef.current[i];
+                
+                const dx = curr.x - prev.x;
+                const dy = curr.y - prev.y;
+                const segmentDist = Math.sqrt(dx * dx + dy * dy);
+                
+                accumulatedDistance += segmentDist;
+                
+                if (accumulatedDistance >= distanceNeeded) {
+                    pos = curr;
+                    break;
+                }
+            }
+
+            if (!pos && positionHistoryRef.current.length > 0) {
+                pos = positionHistoryRef.current[positionHistoryRef.current.length - 1];
+            }
 
             if (pos && segment.image.complete) {
                 const screenPos = camera.worldToScreen(pos.x, pos.y);

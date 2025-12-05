@@ -28,7 +28,8 @@ export default class Segment {
   follow(target, spacing) {
     const distance = this.position.distance(target);
     
-    if (distance > spacing) {
+    // Toujours se déplacer vers la position exacte à 'spacing' de la cible
+    if (distance > 0) {
       const direction = target.subtract(this.position).normalize();
       this.position = target.subtract(direction.multiply(spacing));
     }
