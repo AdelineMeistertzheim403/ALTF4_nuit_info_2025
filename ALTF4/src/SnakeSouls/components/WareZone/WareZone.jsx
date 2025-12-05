@@ -19,6 +19,7 @@ import { useGameLoop } from './hooks/useGameLoop';
 import { Camera } from './camera/Camera';
 import InputManager from '../../game/core/InputManager';
 import { spriteLoader } from '../../game/data/wasteSprites';
+import CollisionSystem from '../../game/systems/CollisionSystem';
 import './WareZone.css';
 
 // ============================================
@@ -276,44 +277,69 @@ export function WareZone({
         }
 
         // ---- COLLISION AVEC LES DÉCHETS ----
-        const playerX = playerPositionRef.current.x;
-        const playerY = playerPositionRef.current.y;
+        const playerPos = { x: playerPositionRef.current.x, y: playerPositionRef.current.y };
+        
+        const { pickedWastes, remainingWastes } = CollisionSystem.checkWasteCollision(
+            playerPos,
+            wastesRef.current,
+            CONFIG.PICKUP_DISTANCE
+        );
 
-        wastesRef.current = wastesRef.current.filter(waste => {
-            const dx = waste.x - playerX;
-            const dy = waste.y - playerY;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+        // Traiter les déchets ramassés
+        pickedWastes.forEach(waste => {
+            // Ajouter comme segment
+            segmentsRef.current.push({
+                spriteData: waste.spriteData,
+                image: waste.image
+            });
 
-            if (distance < CONFIG.PICKUP_DISTANCE) {
-                // Ramasser le déchet - l'ajouter comme segment
-                segmentsRef.current.push({
-                    spriteData: waste.spriteData,
-                    image: waste.image
+            // Mettre à jour le score
+            setTimeout(() => {
+                setScore(prev => {
+                    const newScore = prev + 10;
+                    if (onScoreChange) onScoreChange(newScore);
+                    return newScore;
                 });
+            }, 0);
 
-                // Mettre à jour le score (utiliser setTimeout pour éviter setState pendant render)
-                setTimeout(() => {
-                    setScore(prev => {
-                        const newScore = prev + 10;
-                        if (onScoreChange) onScoreChange(newScore);
-                        return newScore;
-                    });
-                }, 0);
-
-                // Spawner un nouveau déchet ailleurs
-                const angle = Math.random() * Math.PI * 2;
-                const dist = Math.random() * CONFIG.WASTE_SPAWN_RADIUS;
-                const newX = Math.cos(angle) * dist;
-                const newY = Math.sin(angle) * dist;
-                const spriteData = spriteLoader.getRandomSprite();
-                const image = new Image();
-                image.src = spriteData.src;
-                wastesRef.current.push({ x: newX, y: newY, spriteData, image });
-
-                return false; // Supprimer ce déchet
-            }
-            return true; // Garder ce déchet
+            // Spawner un nouveau déchet ailleurs
+            const angle = Math.random() * Math.PI * 2;
+            const dist = Math.random() * CONFIG.WASTE_SPAWN_RADIUS;
+            const newX = Math.cos(angle) * dist;
+            const newY = Math.sin(angle) * dist;
+            const spriteData = spriteLoader.getRandomSprite();
+            const image = new Image();
+            image.src = spriteData.src;
+            wastesRef.current.push({ x: newX, y: newY, spriteData, image });
         });
+
+        wastesRef.current = remainingWastes;
+
+        // ---- COLLISION AVEC SOI-MÊME ----
+        const collisionIndex = CollisionSystem.checkSelfCollision(
+            playerPos,
+            segmentsRef.current,
+            positionHistoryRef.current,
+            currentSpacingRef.current,
+            CONFIG.SEGMENT_SIZE
+        );
+
+        if (collisionIndex !== null) {
+            // Couper le serpent à cet endroit
+            const segmentsLost = segmentsRef.current.length - collisionIndex;
+            segmentsRef.current = segmentsRef.current.slice(0, collisionIndex);
+            
+            // Soustraire les points (10 points par segment perdu)
+            const pointsLost = segmentsLost * 10;
+            
+            setTimeout(() => {
+                setScore(prev => {
+                    const newScore = Math.max(0, prev - pointsLost);
+                    if (onScoreChange) onScoreChange(newScore);
+                    return newScore;
+                });
+            }, 0);
+        }
 
         // Mettre à jour la caméra
         camera.update();
