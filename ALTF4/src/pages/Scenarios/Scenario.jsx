@@ -46,18 +46,26 @@ function App() {
   return (
     <div>
       {laserGameVisible && <LaserGame />}
-      <div style={floatingButtons}>
-        {showGrooveButton && (
+
+      {showGrooveButton && (
+        <div
+          style={{
+            position: "fixed",
+            top: "64px",
+            right: "16px",
+            zIndex: 9999,
+          }}
+        >
           <PlayMusic
             to="/groovebox"
             label="GrooveBox"
-            containerStyle={{ position: "static", marginTop: "48px" }} 
+            containerStyle={{}}
             buttonStyle={{ width: "100%" }}
             useDefaultPosition={false}
           />
-        )}
-      </div>
-    </div>   
+        </div>
+      )}
+    </div>
   );
 }
 
