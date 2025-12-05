@@ -18,6 +18,15 @@ function rand(min, max) {
     return Math.random() * (max - min) + min;
 }
 
+// --- METHODE UTILITAIRE POUR L'URL ---
+const getApiUrl = () => {
+    const hostname = window.location.hostname;
+    if (hostname.includes('adelinemeistertzheim.fr')) {
+      return 'https://altf4.adelinemeistertzheim.fr/api/scores';
+    }
+    return 'http://localhost:4000/api/scores';
+};
+
 const GameHUD = ({ score, timeLeft }) => {
     const minutes = Math.floor(timeLeft / 60);
     const seconds = timeLeft % 60;
@@ -40,6 +49,8 @@ function Game({ pseudo, onShoot, onHit }) {
     const [score, setScore] = useState(0);
     const [timeLeft, setTimeLeft] = useState(180); 
     const [isGameOver, setIsGameOver] = useState(false);
+    const [scoreSent, setScoreSent] = useState(false);
+    const [playerRank, setPlayerRank] = useState(null);
 
     const [blasts, setBlasts] = useState([]);
     const [enemies, setEnemies] = useState([]);
@@ -59,18 +70,56 @@ function Game({ pseudo, onShoot, onHit }) {
         onShootRef.current = onShoot;
     }, [onHit, onShoot]);
 
+    // --- ENVOI DU SCORE À LA FIN ---
+    useEffect(() => {
+        if (isGameOver && !scoreSent) {
+            const sendScore = async () => {
+                try {
+                    // Utilisation de la méthode dynamique ici
+                    const url = getApiUrl();
+                    console.log("Posting score to:", url);
+
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            pseudo: pseudo,
+                            score: score
+                        })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('✅ Score enregistré:', data);
+                        setPlayerRank(data.rang); // Récupérer le rang depuis la réponse
+                        setScoreSent(true);
+                    } else {
+                        console.error('❌ Erreur lors de l\'enregistrement du score');
+                    }
+                } catch (error) {
+                    console.error('❌ Erreur réseau:', error);
+                }
+            };
+
+            sendScore();
+        }
+    }, [isGameOver, scoreSent, pseudo, score]);
+
     // --- LOGIQUE DE REJOUER / QUITTER ---
     const handleReplay = () => {
         setScore(0);
-        setTimeLeft(10); // Réinitialiser le temps (remettre à 300 pour 5min)
+        setTimeLeft(180);
         setEnemies([]);
         setBullets([]);
         setBlasts([]);
-        setIsGameOver(false); // Cela relancera les useEffects
+        setIsGameOver(false);
+        setScoreSent(false);
+        setPlayerRank(null); // Reset du rang
     };
 
     const handleQuit = () => {
-        // Redirige vers l'accueil ou recharge la page
         window.location.reload(); 
     };
 
@@ -279,9 +328,10 @@ function Game({ pseudo, onShoot, onHit }) {
         return (
             <LeaderBoard 
                 score={score} 
-                pseudo={pseudo} 
-                onReplay={handleReplay} // On passe la fonction ici
-                onQuit={handleQuit}     // et ici
+                pseudo={pseudo}
+                rang={playerRank}
+                onReplay={handleReplay}
+                onQuit={handleQuit}
             />
         );
     }

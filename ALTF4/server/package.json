@@ -1,23 +1,25 @@
 {
-  "name": "altf4-backend",
-  "version": "0.1.0",
+  "name": "backend-server",
+  "version": "1.0.0",
   "type": "module",
-  "main": "src/index.js",
+  "description": "Backend Express avec MySQL et Drizzle ORM",
+  "main": "index.js",
   "scripts": {
-    "dev": "nodemon src/index.js",
-    "start": "node src/index.js",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev --create-only --name init",
-    "prisma:deploy": "prisma migrate deploy",
-    "prisma:push": "prisma db push"
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
-    "@prisma/client": "^5.22.0",
+    "express": "^4.18.2",
     "cors": "^2.8.5",
-    "express": "^4.19.2"
+    "mysql2": "^3.6.5",
+    "drizzle-orm": "^0.30.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.9",
-    "prisma": "^5.22.0"
+    "drizzle-kit": "^0.20.0"
   }
 }
