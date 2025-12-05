@@ -250,7 +250,7 @@
 
         .message {
             color: var(--color-primary);
-            font-size: 1.5rem;
+            font-size: 2.5rem;
             text-shadow: 
                 0 0 10px var(--color-primary),
                 0 0 20px var(--color-glow-primary),
@@ -286,6 +286,23 @@
                 transform: translate(-50%, -50%) scale(1) rotateZ(0deg);
             }
         }
+            .nav-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .nav-link a {
+            color: var(--color-primary);
+            text-decoration: none;
+            text-shadow: 0 0 5px var(--color-primary);
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link a:hover {
+            color: var(--color-secondary);
+            text-shadow: 0 0 10px var(--color-secondary);
+        }
     </style>
 </head>
 <body>
@@ -315,6 +332,9 @@
         </div>
 
         <div class="click-hint">▼ CLIQUEZ SUR UNE FENETRE ▼</div>
+        <div class="nav-link">
+        <a href="index.html">← Retour aux portails</a>
+        </div>
     </div>
 
     <div class="message" id="message"></div>
@@ -335,7 +355,7 @@
 
                 const messages = {
                     windows: '⚠ MAUVAIS CHOIX ⚠',
-                    linux: '✓ BON CHOIX ✓'
+                    linux: '✓ VOUS AVEZ DEBLOQUER LA CLE ✓'
                 };
                 
                 messageElement.textContent = messages[windowType];
