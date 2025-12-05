@@ -1,13 +1,15 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
+import LaserGame from '../components/LaserGameComponent/LaserGame';
 
-function App() {
+function Home() {
   return (
     <div>
-      <h1 className="w-20 h-20 bg-yellow-400 rounded cursor-pointer flex items-center justify-center"> </h1>
+      <LaserGame />
+      <h1>Mon Site React</h1>
       
     </div>
   );
 }
 
-export default App;
+export default Home;

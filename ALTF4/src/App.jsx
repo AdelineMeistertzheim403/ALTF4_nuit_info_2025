@@ -2,6 +2,8 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 
 import Home from './pages/Home';
+import GrooveBoxMain from './pages/GrooveBoxMain'
+
 import KeysPage from "./pages/KeysPage.jsx";
 // import DigicodePage from "./pages/DigicodePage.jsx";
 import DigicodePage from "./pages/AdminLogin";
@@ -11,6 +13,7 @@ function App() {
     <div className="App">
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/groovebox" element={<GrooveBoxMain/>}/>
           <Route path="/keys" element={<KeysPage/>}/>
           <Route path="/digicode" element={<DigicodePage/>}/>
 
