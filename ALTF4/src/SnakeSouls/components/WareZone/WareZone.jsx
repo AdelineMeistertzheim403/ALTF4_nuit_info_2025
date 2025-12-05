@@ -1,0 +1,454 @@
+/**
+ * WareZone.jsx
+ *
+ * Composant principal de la zone de jeu.
+ *
+ * Responsabilités :
+ * - Afficher le canvas fullscreen
+ * - Gérer la boucle de jeu (update/render)
+ * - Coordonner la caméra
+ * - Dessiner la grille de fond infinie
+ *
+ * Usage :
+ * <WareZone onScoreChange={setScore} onGameOver={handleGameOver} />
+ */
+
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useCanvas } from './hooks/useCanvas';
+import { useGameLoop } from './hooks/useGameLoop';
+import { Camera } from './camera/Camera';
+import InputManager from '../../game/core/InputManager';
+import { spriteLoader } from '../../game/data/wasteSprites';
+import './WareZone.css';
+
+// ============================================
+// CONFIGURATION
+// ============================================
+const CONFIG = {
+    // Couleurs
+    BACKGROUND_COLOR: '#0a0a0f',
+    GRID_COLOR: 'rgba(255, 255, 255, 0.03)',
+    GRID_SIZE: 50,  // Taille des cases de la grille
+
+    // Déchets
+    WASTE_COUNT: 20,           // Nombre de déchets sur la map
+    WASTE_SIZE: 40,            // Taille des sprites de déchets
+    WASTE_SPAWN_RADIUS: 1500,  // Rayon de spawn autour de l'origine
+    PICKUP_DISTANCE: 35,       // Distance pour ramasser un déchet
+
+    // Snake
+    SEGMENT_SPACING: 25,       // Espacement entre les segments
+    SEGMENT_SIZE: 30,          // Taille des segments
+
+    // Debug
+    DEBUG: true,  // Affiche des infos de debug
+};
+
+// ============================================
+// COMPOSANT PRINCIPAL
+// ============================================
+export function WareZone({
+                             onScoreChange,
+                             onGameOver,
+                             isPaused = false,
+                             debug = false,
+                             children
+                         }) {
+    // ---- Hooks ----
+    const { canvasRef, ctx, dimensions, fill } = useCanvas();
+
+    // ---- Refs (persistantes entre les renders) ----
+    const cameraRef = useRef(new Camera());
+    const inputRef = useRef(null);
+    const playerPositionRef = useRef({ x: 0, y: 0 });
+    const playerAngleRef = useRef(0); // Angle en radians
+    const playerSpeedRef = useRef(150); // Pixels par seconde
+
+    // Historique des positions pour les segments
+    const positionHistoryRef = useRef([]);
+
+    // Segments du snake (déchets ramassés)
+    const segmentsRef = useRef([]); // { x, y, sprite, image }
+
+    // Déchets sur la map
+    const wastesRef = useRef([]); // { x, y, sprite, image }
+    const wastesInitializedRef = useRef(false);
+
+    // ---- State ----
+    const [score, setScore] = useState(0);
+    const [gameState, setGameState] = useState('playing'); // 'playing' | 'paused' | 'gameover'
+
+    // ============================================
+    // INITIALISATION DES DÉCHETS
+    // ============================================
+    const spawnWastes = useCallback(async () => {
+        // Charger tous les sprites
+        await spriteLoader.loadAll();
+
+        const wastes = [];
+        for (let i = 0; i < CONFIG.WASTE_COUNT; i++) {
+            // Position aléatoire dans le rayon de spawn
+            const angle = Math.random() * Math.PI * 2;
+            const distance = Math.random() * CONFIG.WASTE_SPAWN_RADIUS;
+            const x = Math.cos(angle) * distance;
+            const y = Math.sin(angle) * distance;
+
+            // Obtenir un sprite (peut être une image ou une partie de spritesheet)
+            const spriteData = spriteLoader.getRandomSprite();
+            const image = new Image();
+            image.src = spriteData.src;
+
+            wastes.push({
+                x, y,
+                spriteData,
+                image
+            });
+        }
+        wastesRef.current = wastes;
+    }, []);
+
+    // ============================================
+    // INITIALISATION
+    // ============================================
+    useEffect(() => {
+        // Créer l'InputManager une seule fois
+        if (!inputRef.current) {
+            inputRef.current = new InputManager();
+        }
+
+        // Spawner les déchets une seule fois
+        if (!wastesInitializedRef.current) {
+            spawnWastes();
+            wastesInitializedRef.current = true;
+        }
+
+        const camera = cameraRef.current;
+
+        // La caméra suit la position du joueur
+        camera.setTarget(playerPositionRef.current);
+        camera.resize(dimensions.width, dimensions.height);
+        camera.centerOnTarget();
+
+        // Cleanup
+        return () => {
+            if (inputRef.current) {
+                inputRef.current.destroy();
+                inputRef.current = null;
+            }
+        };
+    }, [dimensions, spawnWastes]);
+
+    // ============================================
+    // DESSIN DE LA GRILLE INFINIE
+    // ============================================
+    const drawGrid = useCallback((ctx, camera) => {
+        const { GRID_SIZE, GRID_COLOR } = CONFIG;
+
+        ctx.strokeStyle = GRID_COLOR;
+        ctx.lineWidth = 1;
+
+        // Calculer les bornes visibles
+        const bounds = camera.getBounds();
+
+        // Trouver la première ligne de grille visible
+        const startX = Math.floor(bounds.left / GRID_SIZE) * GRID_SIZE;
+        const startY = Math.floor(bounds.top / GRID_SIZE) * GRID_SIZE;
+
+        // Dessiner les lignes verticales
+        for (let x = startX; x <= bounds.right; x += GRID_SIZE) {
+            const screenPos = camera.worldToScreen(x, 0);
+            ctx.beginPath();
+            ctx.moveTo(screenPos.x, 0);
+            ctx.lineTo(screenPos.x, dimensions.height);
+            ctx.stroke();
+        }
+
+        // Dessiner les lignes horizontales
+        for (let y = startY; y <= bounds.bottom; y += GRID_SIZE) {
+            const screenPos = camera.worldToScreen(0, y);
+            ctx.beginPath();
+            ctx.moveTo(0, screenPos.y);
+            ctx.lineTo(dimensions.width, screenPos.y);
+            ctx.stroke();
+        }
+    }, [dimensions]);
+
+    // ============================================
+    // DESSIN DE L'ORIGINE (debug)
+    // ============================================
+    const drawOrigin = useCallback((ctx, camera) => {
+        const origin = camera.worldToScreen(0, 0);
+
+        // Croix à l'origine
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.5)';
+        ctx.lineWidth = 2;
+
+        ctx.beginPath();
+        ctx.moveTo(origin.x - 20, origin.y);
+        ctx.lineTo(origin.x + 20, origin.y);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(origin.x, origin.y - 20);
+        ctx.lineTo(origin.x, origin.y + 20);
+        ctx.stroke();
+
+        // Label
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.8)';
+        ctx.font = '12px monospace';
+        ctx.fillText('(0, 0)', origin.x + 5, origin.y - 5);
+    }, []);
+
+    // ============================================
+    // DESSIN DES INFOS DEBUG
+    // ============================================
+    const drawDebugInfo = useCallback((ctx, camera, deltaTime) => {
+        const fps = Math.round(1 / deltaTime);
+        const player = playerPositionRef.current;
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.font = '12px monospace';
+
+        const lines = [
+            `FPS: ${fps}`,
+            `Camera: (${Math.round(camera.x)}, ${Math.round(camera.y)})`,
+            `Player: (${Math.round(player.x)}, ${Math.round(player.y)})`,
+            `Viewport: ${dimensions.width}x${dimensions.height}`,
+        ];
+
+        lines.forEach((line, i) => {
+            ctx.fillText(line, 10, dimensions.height - 60 + (i * 15));
+        });
+    }, [dimensions]);
+
+    // ============================================
+    // BOUCLE DE JEU
+    // ============================================
+    const gameLoop = useCallback((deltaTime) => {
+        if (!ctx || isPaused || gameState !== 'playing') return;
+
+        const camera = cameraRef.current;
+        const input = inputRef.current;
+
+        // ---- UPDATE ----
+
+        // Rotation avec les flèches gauche/droite
+        const rotationSpeed = 3; // Radians par seconde
+        if (input && input.isKeyPressed('ArrowLeft')) {
+            playerAngleRef.current -= rotationSpeed * deltaTime;
+        }
+        if (input && input.isKeyPressed('ArrowRight')) {
+            playerAngleRef.current += rotationSpeed * deltaTime;
+        }
+
+        // Vitesse avec flèches haut/bas
+        let currentSpeed = playerSpeedRef.current;
+        if (input && input.isKeyPressed('ArrowUp')) {
+            currentSpeed = 250; // Accélérer
+        }
+        if (input && input.isKeyPressed('ArrowDown')) {
+            currentSpeed = 80; // Ralentir
+        }
+
+        // Déplacer le joueur dans la direction de l'angle
+        playerPositionRef.current.x += Math.cos(playerAngleRef.current) * currentSpeed * deltaTime;
+        playerPositionRef.current.y += Math.sin(playerAngleRef.current) * currentSpeed * deltaTime;
+
+        // Sauvegarder la position dans l'historique (pour les segments)
+        positionHistoryRef.current.unshift({
+            x: playerPositionRef.current.x,
+            y: playerPositionRef.current.y,
+            angle: playerAngleRef.current
+        });
+
+        // Limiter la taille de l'historique
+        const maxHistory = (segmentsRef.current.length + 1) * CONFIG.SEGMENT_SPACING + 100;
+        if (positionHistoryRef.current.length > maxHistory) {
+            positionHistoryRef.current.pop();
+        }
+
+        // ---- COLLISION AVEC LES DÉCHETS ----
+        const playerX = playerPositionRef.current.x;
+        const playerY = playerPositionRef.current.y;
+
+        wastesRef.current = wastesRef.current.filter(waste => {
+            const dx = waste.x - playerX;
+            const dy = waste.y - playerY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < CONFIG.PICKUP_DISTANCE) {
+                // Ramasser le déchet - l'ajouter comme segment
+                segmentsRef.current.push({
+                    spriteData: waste.spriteData,
+                    image: waste.image
+                });
+
+                // Mettre à jour le score (utiliser setTimeout pour éviter setState pendant render)
+                setTimeout(() => {
+                    setScore(prev => {
+                        const newScore = prev + 10;
+                        if (onScoreChange) onScoreChange(newScore);
+                        return newScore;
+                    });
+                }, 0);
+
+                // Spawner un nouveau déchet ailleurs
+                const angle = Math.random() * Math.PI * 2;
+                const dist = Math.random() * CONFIG.WASTE_SPAWN_RADIUS;
+                const newX = Math.cos(angle) * dist;
+                const newY = Math.sin(angle) * dist;
+                const spriteData = spriteLoader.getRandomSprite();
+                const image = new Image();
+                image.src = spriteData.src;
+                wastesRef.current.push({ x: newX, y: newY, spriteData, image });
+
+                return false; // Supprimer ce déchet
+            }
+            return true; // Garder ce déchet
+        });
+
+        // Mettre à jour la caméra
+        camera.update();
+
+        // ---- RENDER ----
+
+        // 1. Fond
+        fill(CONFIG.BACKGROUND_COLOR);
+
+        // 2. Grille infinie
+        drawGrid(ctx, camera);
+
+        // 3. Origine (debug)
+        if (debug || CONFIG.DEBUG) {
+            drawOrigin(ctx, camera);
+        }
+
+        // 4. Dessiner les déchets sur la map
+        wastesRef.current.forEach(waste => {
+            if (camera.isVisible(waste.x, waste.y, CONFIG.WASTE_SIZE)) {
+                const screenPos = camera.worldToScreen(waste.x, waste.y);
+                if (waste.image.complete) {
+                    const sd = waste.spriteData;
+                    if (sd.type === 'spritesheet') {
+                        // Découper depuis la spritesheet
+                        ctx.drawImage(
+                            waste.image,
+                            sd.x, sd.y, sd.w, sd.h,  // Source (découpe)
+                            screenPos.x - CONFIG.WASTE_SIZE / 2,
+                            screenPos.y - CONFIG.WASTE_SIZE / 2,
+                            CONFIG.WASTE_SIZE,
+                            CONFIG.WASTE_SIZE
+                        );
+                    } else {
+                        // Image complète
+                        ctx.drawImage(
+                            waste.image,
+                            screenPos.x - CONFIG.WASTE_SIZE / 2,
+                            screenPos.y - CONFIG.WASTE_SIZE / 2,
+                            CONFIG.WASTE_SIZE,
+                            CONFIG.WASTE_SIZE
+                        );
+                    }
+                }
+            }
+        });
+
+        // 5. Dessiner les segments du snake (queue)
+        segmentsRef.current.forEach((segment, index) => {
+            // Calculer la position du segment basée sur l'historique
+            const historyIndex = (index + 1) * CONFIG.SEGMENT_SPACING;
+            const pos = positionHistoryRef.current[historyIndex];
+
+            if (pos && segment.image.complete) {
+                const screenPos = camera.worldToScreen(pos.x, pos.y);
+                const sd = segment.spriteData;
+                if (sd.type === 'spritesheet') {
+                    // Découper depuis la spritesheet
+                    ctx.drawImage(
+                        segment.image,
+                        sd.x, sd.y, sd.w, sd.h,
+                        screenPos.x - CONFIG.SEGMENT_SIZE / 2,
+                        screenPos.y - CONFIG.SEGMENT_SIZE / 2,
+                        CONFIG.SEGMENT_SIZE,
+                        CONFIG.SEGMENT_SIZE
+                    );
+                } else {
+                    // Image complète
+                    ctx.drawImage(
+                        segment.image,
+                        screenPos.x - CONFIG.SEGMENT_SIZE / 2,
+                        screenPos.y - CONFIG.SEGMENT_SIZE / 2,
+                        CONFIG.SEGMENT_SIZE,
+                        CONFIG.SEGMENT_SIZE
+                    );
+                }
+            }
+        });
+
+        // 6. Dessiner la tête du snake (triangle)
+        const playerScreen = camera.worldToScreen(
+            playerPositionRef.current.x,
+            playerPositionRef.current.y
+        );
+
+        ctx.save();
+        ctx.translate(playerScreen.x, playerScreen.y);
+        ctx.rotate(playerAngleRef.current);
+
+        // Triangle (tête du snake)
+        ctx.fillStyle = '#4ade80';
+        ctx.beginPath();
+        ctx.moveTo(20, 0);      // Pointe avant
+        ctx.lineTo(-10, -12);   // Arrière gauche
+        ctx.lineTo(-10, 12);    // Arrière droite
+        ctx.closePath();
+        ctx.fill();
+
+        // Cercle central
+        ctx.beginPath();
+        ctx.arc(0, 0, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+
+        // 7. Debug info
+        if (debug || CONFIG.DEBUG) {
+            drawDebugInfo(ctx, camera, deltaTime);
+        }
+
+    }, [ctx, isPaused, gameState, fill, drawGrid, drawOrigin, drawDebugInfo, debug, onScoreChange]);
+
+    // Démarrer la boucle
+    useGameLoop({
+        update: gameLoop,
+        render: null,
+        isRunning: !isPaused && gameState === 'playing' && ctx !== null
+    });
+
+    // ============================================
+    // RENDER
+    // ============================================
+    return (
+        <div className={`warezone ${debug ? 'warezone--debug' : ''}`}>
+            <canvas
+                ref={canvasRef}
+                className="warezone__canvas"
+            />
+
+            {/* Overlay pour UI (children passés par le parent) */}
+            <div className="warezone__overlay">
+                {children}
+
+                {/* Écran de pause interne */}
+                {gameState === 'paused' && (
+                    <div className="warezone__pause">
+                        <h2>PAUSE</h2>
+                        <p>Appuie sur ESPACE pour continuer</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+export default WareZone;

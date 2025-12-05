@@ -45,6 +45,12 @@ body {
     backdrop-filter: blur(3px); /* Frosted glass effect */
     position: relative; /* Needed for pseudo-element */
     overflow: hidden; /* Hide scanline overflow */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+}
 
     /* Positioning */
     position: fixed;
@@ -118,4 +124,9 @@ body {
 
 .accent {
     color: var(--color-accent);
+}
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }

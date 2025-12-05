@@ -1,9 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Dialogs from '../../lib/utils/dialogs.js';
+import LaserGame from "../../components/LaserGameComponent/LaserGame.jsx";
 
 const dialog = new Dialogs();
 
 function App() {
+    const [laserGameVisible, setLaserGameVisible] = useState(false);
 
     useEffect(async () => {
         const runScenario1 = async () => {
@@ -27,10 +29,12 @@ function App() {
 
         const init = async () => {
             if (localStorage.getItem('scenario1') !== '1') {
+                setLaserGameVisible(false);
                 await runScenario1();
                 localStorage.setItem('scenario1', '1');
             }
             await setupMainScreen();
+            setLaserGameVisible(true);
         };
 
         init();
@@ -38,6 +42,9 @@ function App() {
 
     return (
         <div>
+            {laserGameVisible && (
+                <LaserGame />
+            )}
             {/* Your component's UI goes here */}
         </div>
     );
