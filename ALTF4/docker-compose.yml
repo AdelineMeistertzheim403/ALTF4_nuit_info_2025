@@ -1,5 +1,6 @@
 services:
   frontend-dev:
+    profiles: ["dev"]
     image: node:20-alpine
     working_dir: /app
     command: npm run dev -- --host 0.0.0.0 --port ${VITE_PORT:-5173} --strictPort
