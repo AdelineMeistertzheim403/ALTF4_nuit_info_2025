@@ -6,10 +6,11 @@
  * Comportement :
  * - Se déplace vers les déchets pour les consommer et grandir
  * - Essaie de bloquer le joueur quand il est assez grand
- * - Évite de se mordre lui-même
+ * - Évite de se mordre lui-même et les autres ennemis
  */
 
 import { ENEMY_TYPES, loadEnemySprite, calculateEnemySpeed } from '../data/enemySprites.js';
+import { EnemyAI, getRandomAIProfile } from '../ai/EnemyAI.js';
 
 export class EnemySnake {
   constructor(options = {}) {
@@ -34,13 +35,9 @@ export class EnemySnake {
     this.headImage = loadEnemySprite(this.type.id);
     this.segmentImage = loadEnemySprite(this.type.id);
 
-    // IA
-    this.aggressiveness = this.type.aggressiveness || 0.5;
-    this.targetWaste = null;
-    this.targetPlayer = null;
-    this.aiState = 'hunting'; // 'hunting' | 'blocking' | 'evading'
-    this.stateTimer = 0;
-    this.decisionInterval = 0.5; // Prendre une décision toutes les 0.5s
+    // IA - Utilise le nouveau système modulaire
+    const aiProfile = options.aiProfile || getRandomAIProfile();
+    this.ai = new EnemyAI(this, aiProfile);
 
     // Stats
     this.alive = true;
@@ -53,28 +50,16 @@ export class EnemySnake {
   update(deltaTime, gameState) {
     if (!this.alive) return;
 
-    const { wastes, playerPos, playerSegments, otherEnemies } = gameState;
+    // Déléguer la logique de décision à l'IA
+    const targetAngle = this.ai.update(deltaTime, gameState);
 
-    // Timer pour les décisions IA
-    this.stateTimer += deltaTime;
-
-    if (this.stateTimer >= this.decisionInterval) {
-      this.stateTimer = 0;
-      this.makeDecision(wastes, playerPos, playerSegments);
+    // Si l'IA retourne un angle, tourner vers celui-ci
+    if (targetAngle !== null) {
+      this.turnTowards(targetAngle, deltaTime);
+    } else {
+      // Mode évitement : tourner aléatoirement
+      this.evade(deltaTime);
     }
-
-    // Vérifier si on va se mordre et éviter si nécessaire
-    if (this.willCollideWithSelf()) {
-      this.aiState = 'evading';
-    }
-
-    // Vérifier si on va rentrer dans un autre ennemi
-    if (otherEnemies && this.willCollideWithOtherEnemy(otherEnemies)) {
-      this.aiState = 'evading';
-    }
-
-    // Exécuter le comportement selon l'état
-    this.executeBehavior(deltaTime, wastes, playerPos);
 
     // Déplacer le snake
     this.move(deltaTime);
@@ -90,70 +75,6 @@ export class EnemySnake {
     if (this.positionHistory.length > maxHistory) {
       this.positionHistory.pop();
     }
-  }
-
-  /**
-   * Prend une décision IA
-   */
-  makeDecision(wastes, playerPos, playerSegments) {
-    const distToPlayer = this.distanceTo(playerPos.x, playerPos.y);
-
-    // Si on a assez de segments et qu'on est agressif, essayer de bloquer le joueur
-    if (this.segments.length >= 5 && Math.random() < this.aggressiveness && distToPlayer < 500) {
-      this.aiState = 'blocking';
-      this.targetPlayer = playerPos;
-    }
-    // Sinon, chasser les déchets
-    else {
-      this.aiState = 'hunting';
-      this.targetWaste = this.findNearestWaste(wastes);
-    }
-  }
-
-  /**
-   * Exécute le comportement selon l'état
-   */
-  executeBehavior(deltaTime, wastes, playerPos) {
-    switch (this.aiState) {
-      case 'hunting':
-        this.huntWaste(deltaTime);
-        break;
-      case 'blocking':
-        this.blockPlayer(deltaTime, playerPos);
-        break;
-      case 'evading':
-        this.evade(deltaTime);
-        break;
-    }
-  }
-
-  /**
-   * Chasse le déchet le plus proche
-   */
-  huntWaste(deltaTime) {
-    if (!this.targetWaste) return;
-
-    const targetAngle = Math.atan2(
-      this.targetWaste.y - this.y,
-      this.targetWaste.x - this.x
-    );
-
-    this.turnTowards(targetAngle, deltaTime);
-  }
-
-  /**
-   * Essaie de bloquer le joueur en se mettant devant lui
-   */
-  blockPlayer(deltaTime, playerPos) {
-    if (!playerPos) return;
-
-    // Prédire où le joueur va aller (devant lui)
-    const predictDistance = 200;
-    const targetX = playerPos.x + Math.cos(playerPos.angle || 0) * predictDistance;
-    const targetY = playerPos.y + Math.sin(playerPos.angle || 0) * predictDistance;
-
-    const targetAngle = Math.atan2(targetY - this.y, targetX - this.x);
-    this.turnTowards(targetAngle, deltaTime);
   }
 
   /**

@@ -6,6 +6,7 @@
 
 import { EnemySnake } from '../entities/EnemySnake.js';
 import { ENEMY_TYPES, ENEMY_IDS, getRandomEnemyType } from '../data/enemySprites.js';
+import { AI_PROFILES } from '../ai/EnemyAI.js';
 
 export class EnemyManager {
   constructor(options = {}) {
@@ -74,11 +75,15 @@ export class EnemyManager {
     // Type aléatoire
     const type = getRandomEnemyType();
 
+    // Récupérer le profil AI associé au type
+    const aiProfile = type.aiProfile ? AI_PROFILES[type.aiProfile] : null;
+
     const enemy = new EnemySnake({
       x,
       y,
       type,
-      angle: Math.random() * Math.PI * 2
+      angle: Math.random() * Math.PI * 2,
+      aiProfile
     });
 
     // Donner quelques segments de départ (1-3)
@@ -88,7 +93,8 @@ export class EnemyManager {
     }
 
     this.enemies.push(enemy);
-    console.log(`[EnemyManager] Spawned ${type.name} at (${Math.round(x)}, ${Math.round(y)})`);
+    const profileName = aiProfile ? aiProfile.name : 'Random';
+    console.log(`[EnemyManager] Spawned ${type.name} (${profileName}) at (${Math.round(x)}, ${Math.round(y)})`);
 
     return enemy;
   }

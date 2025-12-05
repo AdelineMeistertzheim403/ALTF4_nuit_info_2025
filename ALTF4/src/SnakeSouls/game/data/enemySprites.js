@@ -42,71 +42,63 @@ export function setDifficulty(multiplier) {
   ENEMY_DIFFICULTY.difficultyMultiplier = multiplier;
 }
 
-// Configuration des ennemis avec leurs sprites
+// Configuration des ennemis avec leurs sprites et profils AI
 export const ENEMY_TYPES = {
   apple: {
     id: 'apple',
     name: 'Apple',
     sprite: appleSprite,
     color: '#A2AAAD',
-    speed: 120,
-    aggressiveness: 0.3, // 0 = passif, 1 = très agressif
+    aiProfile: 'cautious', // Apple est prudent et méthodique
   },
   chrome: {
     id: 'chrome',
     name: 'Chrome',
     sprite: chromeSprite,
     color: '#4285F4',
-    speed: 140,
-    aggressiveness: 0.5,
+    aiProfile: 'opportunist', // Chrome s'adapte à tout
   },
   huawei: {
     id: 'huawei',
     name: 'Huawei',
     sprite: huaweiSprite,
     color: '#FF0000',
-    speed: 130,
-    aggressiveness: 0.6,
+    aiProfile: 'aggressive', // Huawei est agressif
   },
   ibm: {
     id: 'ibm',
     name: 'IBM',
     sprite: ibmSprite,
     color: '#006699',
-    speed: 100,
-    aggressiveness: 0.4,
+    aiProfile: 'hunter', // IBM focus sur la collecte
   },
   nvidia: {
     id: 'nvidia',
     name: 'Nvidia',
     sprite: nvidiaSprite,
     color: '#76B900',
-    speed: 150,
-    aggressiveness: 0.7,
+    aiProfile: 'kamikaze', // Nvidia fonce dans le tas
   },
   oracle: {
     id: 'oracle',
     name: 'Oracle',
     sprite: oracleSprite,
     color: '#F80000',
-    speed: 110,
-    aggressiveness: 0.8,
+    aiProfile: 'aggressive', // Oracle est très agressif
   },
   samsung: {
     id: 'samsung',
     name: 'Samsung',
     sprite: samsungSprite,
     color: '#1428A0',
-    speed: 125,
-    aggressiveness: 0.5,
+    aiProfile: 'opportunist', // Samsung s'adapte
   },
   windows: {
     id: 'windows',
     name: 'Windows',
     sprite: windowsSprite,
     color: '#00A4EF',
-    speed: 135,
-    aggressiveness: 0.6,
+    aiProfile: 'hunter', // Windows collecte
   },
 };
 
