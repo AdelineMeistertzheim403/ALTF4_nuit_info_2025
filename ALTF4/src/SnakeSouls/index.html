@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🐍 Snake - Version Fluide</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1A1A2E;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+    }
+    h1 { margin-bottom: 10px; color: #60A5FA; }
+    .info { margin-bottom: 20px; opacity: 0.7; }
+    canvas {
+      border: 3px solid #60A5FA;
+      border-radius: 8px;
+      background: #0F0F1A;
+    }
+    .score {
+      margin-top: 20px;
+      font-size: 1.5rem;
+    }
+    .controls {
+      margin-top: 15px;
+      opacity: 0.6;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌊 Snake Fluide</h1>
+  <p class="info">Déplacement libre - Rotation 360°</p>
+  <canvas id="game" width="500" height="500"></canvas>
+  <div class="score">Score: <span id="score">0</span></div>
+  <p class="controls">← → pour tourner | ↑ accélérer | ↓ ralentir</p>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+
+    // Configuration
+    const SEGMENT_RADIUS = 8;
+    const SEGMENT_SPACING = 12;        // Distance entre segments
+    const BASE_SPEED = 2;              // Vitesse de base (pixels/frame)
+    const TURN_SPEED = 0.08;           // Vitesse de rotation (radians/frame)
+    const INITIAL_LENGTH = 10;
+
+    // État du jeu
+    let snake = [];
+    let angle = 0;                     // Direction en radians (0 = droite)
+    let speed = BASE_SPEED;
+    let food = { x: 350, y: 250 };
+    let score = 0;
+    let gameOver = false;
+
+    // Touches pressées
+    const keys = {
+      left: false,
+      right: false,
+      up: false,
+      down: false
+    };
+
+    // Initialisation du snake
+    function initSnake() {
+      snake = [];
+      const startX = canvas.width / 2;
+      const startY = canvas.height / 2;
+
+      for (let i = 0; i < INITIAL_LENGTH; i++) {
+        snake.push({
+          x: startX - i * SEGMENT_SPACING,
+          y: startY
+        });
+      }
+    }
+
+    // Gestion des touches
+    document.addEventListener('keydown', (e) => {
+      if (gameOver && e.code === 'Space') {
+        resetGame();
+        return;
+      }
+
+      switch(e.code) {
+        case 'ArrowLeft':  keys.left = true; break;
+        case 'ArrowRight': keys.right = true; break;
+        case 'ArrowUp':    keys.up = true; break;
+        case 'ArrowDown':  keys.down = true; break;
+      }
+    });
+
+    document.addEventListener('keyup', (e) => {
+      switch(e.code) {
+        case 'ArrowLeft':  keys.left = false; break;
+        case 'ArrowRight': keys.right = false; break;
+        case 'ArrowUp':    keys.up = false; break;
+        case 'ArrowDown':  keys.down = false; break;
+      }
+    });
+
+    // Générer nourriture
+    function spawnFood() {
+      const margin = 30;
+      food = {
+        x: margin + Math.random() * (canvas.width - margin * 2),
+        y: margin + Math.random() * (canvas.height - margin * 2)
+      };
+    }
+
+    // Distance entre deux points
+    function distance(a, b) {
+      return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+    }
+
+    // Mise à jour
+    function update() {
+      if (gameOver) return;
+
+      // Rotation
+      if (keys.left) angle -= TURN_SPEED;
+      if (keys.right) angle += TURN_SPEED;
+
+      // Vitesse
+      let currentSpeed = BASE_SPEED;
+      if (keys.up) currentSpeed = BASE_SPEED * 1.8;
+      if (keys.down) currentSpeed = BASE_SPEED * 0.5;
+
+      // Nouvelle position de la tête
+      const head = snake[0];
+      const newHead = {
+        x: head.x + Math.cos(angle) * currentSpeed,
+        y: head.y + Math.sin(angle) * currentSpeed
+      };
+
+      // Collision murs
+      if (newHead.x < SEGMENT_RADIUS || newHead.x > canvas.width - SEGMENT_RADIUS ||
+          newHead.y < SEGMENT_RADIUS || newHead.y > canvas.height - SEGMENT_RADIUS) {
+        gameOver = true;
+        return;
+      }
+
+      // Collision avec soi-même (ignore les premiers segments)
+      for (let i = 10; i < snake.length; i++) {
+        if (distance(newHead, snake[i]) < SEGMENT_RADIUS * 1.5) {
+          gameOver = true;
+          return;
+        }
+      }
+
+      // Insérer la nouvelle tête
+      snake.unshift(newHead);
+
+      // Manger la nourriture ?
+      if (distance(newHead, food) < SEGMENT_RADIUS + 15) {
+        score += 10;
+        scoreEl.textContent = score;
+        spawnFood();
+        // Ajouter 3 segments (ne pas retirer la queue)
+        for (let i = 0; i < 3; i++) {
+          snake.push({ ...snake[snake.length - 1] });
+        }
+      }
+
+      // Faire suivre le corps (chaque segment suit le précédent)
+      for (let i = snake.length - 1; i > 0; i--) {
+        const current = snake[i];
+        const target = snake[i - 1];
+        const dist = distance(current, target);
+
+        if (dist > SEGMENT_SPACING) {
+          const ratio = SEGMENT_SPACING / dist;
+          current.x = target.x - (target.x - current.x) * ratio;
+          current.y = target.y - (target.y - current.y) * ratio;
+        }
+      }
+
+      // Retirer le dernier segment pour garder la longueur
+      if (snake.length > INITIAL_LENGTH + (score / 10) * 3) {
+        snake.pop();
+      }
+    }
+
+    // Dessin
+    function draw() {
+      // Fond
+      ctx.fillStyle = '#0F0F1A';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Nourriture
+      ctx.fillStyle = '#F472B6';
+      ctx.beginPath();
+      ctx.arc(food.x, food.y, 12, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Glow effet
+      ctx.shadowColor = '#F472B6';
+      ctx.shadowBlur = 15;
+      ctx.beginPath();
+      ctx.arc(food.x, food.y, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Snake (du dernier au premier pour que la tête soit au-dessus)
+      for (let i = snake.length - 1; i >= 0; i--) {
+        const seg = snake[i];
+        const isHead = i === 0;
+
+        // Dégradé de couleur du corps
+        const hue = 200 + (i / snake.length) * 40;
+        const lightness = isHead ? 60 : 45 - (i / snake.length) * 15;
+        ctx.fillStyle = `hsl(${hue}, 80%, ${lightness}%)`;
+
+        ctx.beginPath();
+        ctx.arc(seg.x, seg.y, isHead ? SEGMENT_RADIUS + 2 : SEGMENT_RADIUS, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Yeux sur la tête
+        if (isHead) {
+          ctx.fillStyle = 'white';
+          const eyeOffset = 4;
+          const eyeAngle1 = angle - 0.5;
+          const eyeAngle2 = angle + 0.5;
+
+          ctx.beginPath();
+          ctx.arc(
+            seg.x + Math.cos(eyeAngle1) * eyeOffset,
+            seg.y + Math.sin(eyeAngle1) * eyeOffset,
+            3, 0, Math.PI * 2
+          );
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.arc(
+            seg.x + Math.cos(eyeAngle2) * eyeOffset,
+            seg.y + Math.sin(eyeAngle2) * eyeOffset,
+            3, 0, Math.PI * 2
+          );
+          ctx.fill();
+
+          // Pupilles
+          ctx.fillStyle = '#0F0F1A';
+          ctx.beginPath();
+          ctx.arc(
+            seg.x + Math.cos(eyeAngle1) * (eyeOffset + 1),
+            seg.y + Math.sin(eyeAngle1) * (eyeOffset + 1),
+            1.5, 0, Math.PI * 2
+          );
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.arc(
+            seg.x + Math.cos(eyeAngle2) * (eyeOffset + 1),
+            seg.y + Math.sin(eyeAngle2) * (eyeOffset + 1),
+            1.5, 0, Math.PI * 2
+          );
+          ctx.fill();
+        }
+      }
+
+      // Indicateur de direction (optionnel)
+      const head = snake[0];
+      ctx.strokeStyle = 'rgba(96, 165, 250, 0.3)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(head.x, head.y);
+      ctx.lineTo(
+        head.x + Math.cos(angle) * 30,
+        head.y + Math.sin(angle) * 30
+      );
+      ctx.stroke();
+
+      // Game Over
+      if (gameOver) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#EF4444';
+        ctx.font = 'bold 32px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 20);
+        ctx.fillStyle = 'white';
+        ctx.font = '16px sans-serif';
+        ctx.fillText('Appuie sur ESPACE pour rejouer', canvas.width / 2, canvas.height / 2 + 20);
+      }
+    }
+
+    function resetGame() {
+      initSnake();
+      angle = 0;
+      score = 0;
+      scoreEl.textContent = score;
+      gameOver = false;
+      spawnFood();
+    }
+
+    // Boucle de jeu (60 FPS)
+    function gameLoop() {
+      update();
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Démarrage
+    initSnake();
+    gameLoop();
+  </script>
+</body>
+</html>
