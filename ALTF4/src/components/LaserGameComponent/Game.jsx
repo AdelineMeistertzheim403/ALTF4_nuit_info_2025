@@ -38,9 +38,10 @@ const GameHUD = ({ score, timeLeft }) => {
 
 function Game({ pseudo, onShoot, onHit }) {
     const [score, setScore] = useState(0);
-    const [timeLeft, setTimeLeft] = useState(10); 
+    const [timeLeft, setTimeLeft] = useState(180); 
     const [isGameOver, setIsGameOver] = useState(false);
     const [scoreSent, setScoreSent] = useState(false);
+    const [playerRank, setPlayerRank] = useState(null);
 
     const [blasts, setBlasts] = useState([]);
     const [enemies, setEnemies] = useState([]);
@@ -79,6 +80,7 @@ function Game({ pseudo, onShoot, onHit }) {
                     if (response.ok) {
                         const data = await response.json();
                         console.log('✅ Score enregistré:', data);
+                        setPlayerRank(data.rang); // Récupérer le rang depuis la réponse
                         setScoreSent(true);
                     } else {
                         console.error('❌ Erreur lors de l\'enregistrement du score');
@@ -95,12 +97,13 @@ function Game({ pseudo, onShoot, onHit }) {
     // --- LOGIQUE DE REJOUER / QUITTER ---
     const handleReplay = () => {
         setScore(0);
-        setTimeLeft(10);
+        setTimeLeft(180);
         setEnemies([]);
         setBullets([]);
         setBlasts([]);
         setIsGameOver(false);
-        setScoreSent(false); // Reset pour permettre un nouvel envoi
+        setScoreSent(false);
+        setPlayerRank(null); // Reset du rang
     };
 
     const handleQuit = () => {
@@ -312,7 +315,8 @@ function Game({ pseudo, onShoot, onHit }) {
         return (
             <LeaderBoard 
                 score={score} 
-                pseudo={pseudo} 
+                pseudo={pseudo}
+                rang={playerRank}
                 onReplay={handleReplay}
                 onQuit={handleQuit}
             />
