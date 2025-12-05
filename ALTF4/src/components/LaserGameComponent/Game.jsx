@@ -209,6 +209,13 @@ function Game({ pseudo, onShoot, onHit }) {
                     const d = Math.hypot(b.x - mx, b.y - my);
                     
                     if (d < 20) {
+                        // --- CORRECTION SONORE ICI ---
+                        // On crée une nouvelle instance audio et on la joue directement
+                        // Cela permet de jouer le son même si le précédent n'est pas fini (superposition)
+                        const hitSound = new Audio(damage);
+                        hitSound.volume = 0.5; // Optionnel : baisser un peu le volume si c'est trop fort
+                        hitSound.play(); 
+
                         if (onHitRef.current) onHitRef.current(5);
                         return false; // Supprime la balle IMMÉDIATEMENT
                     }
