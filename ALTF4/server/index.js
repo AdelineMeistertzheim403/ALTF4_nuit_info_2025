@@ -8,11 +8,9 @@ import { desc } from 'drizzle-orm';
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Configuration MySQL
 const connection = await mysql.createConnection({
   host: process.env.DB_HOST || 'db',
   user: process.env.MYSQL_USER,
@@ -24,12 +22,22 @@ const db = drizzle(connection);
 
 console.log('✅ Connexion à MySQL réussie');
 
-// Routes
+// Création de la table au démarrage
+await connection.query(`
+  CREATE TABLE IF NOT EXISTS scores (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    pseudo VARCHAR(100) NOT NULL,
+    score INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+console.log('✅ Table scores prête');
+
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Backend is running' });
 });
 
-// GET tous les scores (triés par score décroissant)
 app.get('/api/scores', async (req, res) => {
   try {
     const allScores = await db.select().from(scores).orderBy(desc(scores.score));
@@ -40,7 +48,6 @@ app.get('/api/scores', async (req, res) => {
   }
 });
 
-// POST ajouter un nouveau score
 app.post('/api/scores', async (req, res) => {
   const { pseudo, score } = req.body;
   
@@ -66,7 +73,6 @@ app.post('/api/scores', async (req, res) => {
   }
 });
 
-// Démarrage du serveur
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Serveur démarré sur le port ${PORT}`);
 });

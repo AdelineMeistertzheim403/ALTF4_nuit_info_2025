@@ -38,8 +38,9 @@ const GameHUD = ({ score, timeLeft }) => {
 
 function Game({ pseudo, onShoot, onHit }) {
     const [score, setScore] = useState(0);
-    const [timeLeft, setTimeLeft] = useState(180); 
+    const [timeLeft, setTimeLeft] = useState(10); 
     const [isGameOver, setIsGameOver] = useState(false);
+    const [scoreSent, setScoreSent] = useState(false);
 
     const [blasts, setBlasts] = useState([]);
     const [enemies, setEnemies] = useState([]);
@@ -59,18 +60,50 @@ function Game({ pseudo, onShoot, onHit }) {
         onShootRef.current = onShoot;
     }, [onHit, onShoot]);
 
+    // --- ENVOI DU SCORE À LA FIN ---
+    useEffect(() => {
+        if (isGameOver && !scoreSent) {
+            const sendScore = async () => {
+                try {
+                    const response = await fetch('http://localhost:4000/api/scores', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            pseudo: pseudo,
+                            score: score
+                        })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('✅ Score enregistré:', data);
+                        setScoreSent(true);
+                    } else {
+                        console.error('❌ Erreur lors de l\'enregistrement du score');
+                    }
+                } catch (error) {
+                    console.error('❌ Erreur réseau:', error);
+                }
+            };
+
+            sendScore();
+        }
+    }, [isGameOver, scoreSent, pseudo, score]);
+
     // --- LOGIQUE DE REJOUER / QUITTER ---
     const handleReplay = () => {
         setScore(0);
-        setTimeLeft(10); // Réinitialiser le temps (remettre à 300 pour 5min)
+        setTimeLeft(10);
         setEnemies([]);
         setBullets([]);
         setBlasts([]);
-        setIsGameOver(false); // Cela relancera les useEffects
+        setIsGameOver(false);
+        setScoreSent(false); // Reset pour permettre un nouvel envoi
     };
 
     const handleQuit = () => {
-        // Redirige vers l'accueil ou recharge la page
         window.location.reload(); 
     };
 
@@ -280,8 +313,8 @@ function Game({ pseudo, onShoot, onHit }) {
             <LeaderBoard 
                 score={score} 
                 pseudo={pseudo} 
-                onReplay={handleReplay} // On passe la fonction ici
-                onQuit={handleQuit}     // et ici
+                onReplay={handleReplay}
+                onQuit={handleQuit}
             />
         );
     }
