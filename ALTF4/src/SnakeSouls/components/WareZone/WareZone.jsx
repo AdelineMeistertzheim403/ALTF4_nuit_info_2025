@@ -971,43 +971,73 @@ export function WareZone({
             }
         });
 
-        // 5.2 Malus (glow rouge pulsant)
+        // 5.2 Malus (HALO ROUGE INTENSE pour bien différencier des bonus)
         malusesRef.current.forEach((malus, index) => {
             if (!malus.active) return;
 
-            if (camera.isVisible(malus.x, malus.y, CONFIG.BONUS_SIZE)) {
+            if (camera.isVisible(malus.x, malus.y, CONFIG.BONUS_SIZE * 2)) {
                 const screenPos = camera.worldToScreen(malus.x, malus.y);
                 if (malus.image.complete) {
-                    const malusData = malus.spriteData.data;
-                    const malusColor = malusData?.color || '#FF0000';
-
                     const time = Date.now() / 1000;
-                    // Pulsation plus rapide et plus intense pour les malus
-                    const pulse = Math.sin(time * 5 + index) * 0.4 + 0.6;
+                    // Pulsation rapide et intense
+                    const pulse = Math.sin(time * 6 + index) * 0.5 + 0.5;
+                    const fastPulse = Math.sin(time * 12 + index) * 0.3 + 0.7;
 
-                    // Glow rouge
-                    ctx.shadowColor = malusColor;
-                    ctx.shadowBlur = 30 * pulse;
+                    // HALO ROUGE EXTERNE (très visible)
+                    ctx.save();
 
-                    // Cercles de danger
-                    ctx.globalAlpha = 0.2 * pulse;
-                    ctx.fillStyle = malusColor;
+                    // Grand cercle rouge externe pulsant
+                    const gradient = ctx.createRadialGradient(
+                        screenPos.x, screenPos.y, CONFIG.BONUS_SIZE / 2,
+                        screenPos.x, screenPos.y, CONFIG.BONUS_SIZE * 1.5 + pulse * 20
+                    );
+                    gradient.addColorStop(0, 'rgba(255, 0, 0, 0.6)');
+                    gradient.addColorStop(0.5, 'rgba(255, 50, 50, 0.3)');
+                    gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+
+                    ctx.fillStyle = gradient;
                     ctx.beginPath();
-                    ctx.arc(screenPos.x, screenPos.y, CONFIG.BONUS_SIZE / 2 + 20 * pulse, 0, Math.PI * 2);
+                    ctx.arc(screenPos.x, screenPos.y, CONFIG.BONUS_SIZE * 1.5 + pulse * 20, 0, Math.PI * 2);
                     ctx.fill();
 
-                    ctx.globalAlpha = 0.3 * pulse;
+                    // Cercle rouge moyen
+                    ctx.globalAlpha = 0.5 * fastPulse;
+                    ctx.fillStyle = '#FF0000';
                     ctx.beginPath();
-                    ctx.arc(screenPos.x, screenPos.y, CONFIG.BONUS_SIZE / 2 + 10 * pulse, 0, Math.PI * 2);
+                    ctx.arc(screenPos.x, screenPos.y, CONFIG.BONUS_SIZE / 2 + 25 + pulse * 10, 0, Math.PI * 2);
                     ctx.fill();
 
+                    // Cercle rouge interne
+                    ctx.globalAlpha = 0.7 * fastPulse;
+                    ctx.fillStyle = '#FF3333';
+                    ctx.beginPath();
+                    ctx.arc(screenPos.x, screenPos.y, CONFIG.BONUS_SIZE / 2 + 12 + pulse * 5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Anneau de danger (contour)
+                    ctx.globalAlpha = 0.8;
+                    ctx.strokeStyle = '#FF0000';
+                    ctx.lineWidth = 3 + pulse * 2;
+                    ctx.beginPath();
+                    ctx.arc(screenPos.x, screenPos.y, CONFIG.BONUS_SIZE / 2 + 30 + pulse * 15, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // Second anneau
+                    ctx.globalAlpha = 0.5;
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([8, 4]);
+                    ctx.beginPath();
+                    ctx.arc(screenPos.x, screenPos.y, CONFIG.BONUS_SIZE / 2 + 45 + pulse * 10, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    ctx.restore();
+
+                    // Image du malus avec glow rouge
+                    ctx.save();
+                    ctx.shadowColor = '#FF0000';
+                    ctx.shadowBlur = 40 * fastPulse;
                     ctx.globalAlpha = 1;
-
-                    // Ombre
-                    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-                    ctx.shadowBlur = 8;
-                    ctx.shadowOffsetX = 3;
-                    ctx.shadowOffsetY = 3;
 
                     const imgWidth = malus.image.naturalWidth || malus.image.width;
                     const imgHeight = malus.image.naturalHeight || malus.image.height;
@@ -1025,9 +1055,7 @@ export function WareZone({
                         drawHeight
                     );
 
-                    ctx.shadowBlur = 0;
-                    ctx.shadowOffsetX = 0;
-                    ctx.shadowOffsetY = 0;
+                    ctx.restore();
                 }
             }
         });
