@@ -138,18 +138,36 @@ export default function KeysPage() {
                 // 🔥 si la clé est verrouillée, on remplace la serrure normale
                 if (lockedKeys[lock.type]) {
                     return (
-                        <img
-                            key={lock.type}
-                            src={lockedImages[lock.type]}
-                            style={{
-                                position: "absolute",
-                                left: `${lock.x}%`,
-                                top: `${lock.y}%`,
-                                width: "14%",
-                                pointerEvents: "none",
-                                transition: "0.3s",
-                            }}
-                        />
+                        <div>
+                            <img
+                                key={lock.type}
+                                src={lockedImages[lock.type]}
+                                style={{
+                                    position: "absolute",
+                                    left: `${lock.x}%`,
+                                    top: `${lock.y}%`,
+                                    width: "14%",
+                                    pointerEvents: "none",
+                                    transition: "0.3s",
+                                }}
+                            />
+                            {/* Texte sous la serrure validée */}
+                            <div
+                                style={{
+                                    position: "absolute",
+                                    left: `${lock.x + 6}%`,
+                                    top: `${lock.y + 21}%`,
+                                    color: "white",
+                                    fontSize: "1.4rem",
+                                    textShadow: "0 0 8px #00eaff",
+                                    fontFamily: "monospace",
+                                }}
+                            >
+                                {lock.type === "bronze" && "1 - 4"}
+                                {lock.type === "gold" && "3 - 6"}
+                                {lock.type === "silver" && "2 - 9"}
+                            </div>
+                        </div>
                     );
                 }
 
