@@ -1,5 +1,19 @@
 import React, { useEffect, useState } from 'react';
 
+// --- METHODE UTILITAIRE ---
+const getApiUrl = () => {
+  // On récupère le nom de domaine actuel (ex: localhost ou altf4.adelinemeistertzheim.fr)
+  const hostname = window.location.hostname;
+
+  // Si l'URL contient ton domaine de prod
+  if (hostname.includes('adelinemeistertzheim.fr')) {
+    return 'https://altf4.adelinemeistertzheim.fr/api/scores';
+  }
+
+  // Sinon, on est probablement en local, on tape sur le port 4000
+  return 'http://localhost:4000/api/scores';
+};
+
 export default function LeaderBoard({ pseudo, score, rang, onReplay, onQuit }) {
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -8,7 +22,12 @@ export default function LeaderBoard({ pseudo, score, rang, onReplay, onQuit }) {
   useEffect(() => {
     const fetchScores = async () => {
       try {
-        const response = await fetch('http://localhost:4000/api/scores');
+        // --- UTILISATION DE LA METHODE ICI ---
+        const url = getApiUrl();
+        console.log("Fetching URL:", url); // Petit log pour vérifier
+
+        const response = await fetch(url);
+        
         if (response.ok) {
           const data = await response.json();
           setLeaderboard(data);
@@ -60,8 +79,8 @@ export default function LeaderBoard({ pseudo, score, rang, onReplay, onQuit }) {
                     Aucun score disponible
                   </div>
                 ) : (
-                  leaderboard.map((player, index) => (
-                    <div key={player.id} style={styles.listRow}>
+                  leaderboard.map((player) => (
+                    <div key={player.id || Math.random()} style={styles.listRow}>
                         <span style={styles.colRank}>{player.rang}</span>
                         <span style={styles.colPseudo}>{player.pseudo}</span>
                         <span style={styles.colScore}>{player.score}</span>

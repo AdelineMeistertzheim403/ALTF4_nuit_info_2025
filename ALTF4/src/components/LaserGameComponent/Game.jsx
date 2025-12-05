@@ -18,6 +18,15 @@ function rand(min, max) {
     return Math.random() * (max - min) + min;
 }
 
+// --- METHODE UTILITAIRE POUR L'URL ---
+const getApiUrl = () => {
+    const hostname = window.location.hostname;
+    if (hostname.includes('adelinemeistertzheim.fr')) {
+      return 'https://altf4.adelinemeistertzheim.fr/api/scores';
+    }
+    return 'http://localhost:4000/api/scores';
+};
+
 const GameHUD = ({ score, timeLeft }) => {
     const minutes = Math.floor(timeLeft / 60);
     const seconds = timeLeft % 60;
@@ -66,7 +75,11 @@ function Game({ pseudo, onShoot, onHit }) {
         if (isGameOver && !scoreSent) {
             const sendScore = async () => {
                 try {
-                    const response = await fetch('http://localhost:4000/api/scores', {
+                    // Utilisation de la méthode dynamique ici
+                    const url = getApiUrl();
+                    console.log("Posting score to:", url);
+
+                    const response = await fetch(url, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
