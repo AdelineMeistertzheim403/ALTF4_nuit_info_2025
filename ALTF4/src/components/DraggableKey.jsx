@@ -198,7 +198,7 @@ export default function DraggableKey({
                     width: "100%",
                     transform: `rotate(${rotation}deg)`,
                     transformOrigin: "center",
-                    transition: locked ? "transform 0.25s ease-out" : "none", // 🔥 réalignement smooth
+                    transition: locked ? "transform 0.25s ease-out" : "none",
                     userSelect: "none",
                     cursor: locked
                         ? "default"

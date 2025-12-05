@@ -26,6 +26,10 @@ export default function KeysPage() {
         { type: "bronze", x: 25, y: 18 },
     ];
 
+    const allUnlocked =
+        lockedKeys.gold &&
+        lockedKeys.silver &&
+        lockedKeys.bronze;
 
     function isHorizontal(angle) {
 
@@ -145,6 +149,28 @@ export default function KeysPage() {
                     />
                 );
             })}
+            {allUnlocked && (
+                <button
+                    onClick={() => window.location.href = "/digicode"}
+                    style={{
+                        position: "absolute",
+                        bottom: "5%",
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        padding: "12px 20px",
+                        fontSize: "1.5rem",
+                        background: "#4caf50",
+                        color: "white",
+                        borderRadius: "10px",
+                        border: "none",
+                        cursor: "pointer",
+                        boxShadow: "0 0 20px #4caf50",
+                    }}
+                >
+                    Continuer →
+                </button>
+            )}
+
         </div>
     );
 }
