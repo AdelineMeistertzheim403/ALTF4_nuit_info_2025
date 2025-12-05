@@ -90,6 +90,8 @@ export default function KeysPage() {
 
         return dist < lockSize * 0.85;
     }
+    const [hover, setHover] = useState(false);
+
 
     return (
         <div
@@ -210,6 +212,32 @@ export default function KeysPage() {
                     />
                 );
             })}
+
+            <button
+                onClick={() => (window.location.href = "/")}
+                onMouseEnter={() => setHover(true)}
+                onMouseLeave={() => setHover(false)}
+                style={{
+                    position: "absolute",
+                    top: "5%",
+                    right: "0%",
+                    transform: `translateX(-50%) scale(${hover ? 1.1 : 1})`,
+                    padding: "12px 20px",
+                    fontSize: "1.5rem",
+                    background: hover ? "#61d66f" : "#4caf50",
+                    color: "white",
+                    borderRadius: "10px",
+                    border: "none",
+                    cursor: "pointer",
+                    boxShadow: hover
+                        ? "0 0 30px #61d66f"
+                        : "0 0 20px #4caf50",
+                    transition: "0.2s ease-in-out",
+                }}
+            >
+                Retour
+            </button>
+
 
             {allUnlocked && (
                 <button
