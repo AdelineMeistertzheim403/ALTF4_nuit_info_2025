@@ -10,6 +10,8 @@ import nvidiaImg from '../../SnakeSouls/assets/sprites/enemies/nvidia.png';
 import oracleImg from '../../SnakeSouls/assets/sprites/enemies/oracle.png';
 import samsungImg from '../../SnakeSouls/assets/sprites/enemies/samsung.png';
 import windowsImg from '../../SnakeSouls/assets/sprites/enemies/windows.png';
+import laser from '../../assets/audio/laser.mp3';
+import damage from '../../assets/audio/damage.mp3';
 
 function rand(min, max) {
     return Math.random() * (max - min) + min;
@@ -19,6 +21,9 @@ function Game({ pseudo, onShoot, onHit }) {
     const [blasts, setBlasts] = useState([]);
     const [enemies, setEnemies] = useState([]);
     const [bullets, setBullets] = useState([]);
+
+    const laserSound = new Audio(laser);
+    const damageSound = new Audio(damage);
     
     // 1. CORRECTION BUG : On utilise useRef pour la souris et les callbacks
     // Cela évite de redémarrer la boucle useEffect à chaque mouvement ou changement de score
@@ -204,8 +209,14 @@ function Game({ pseudo, onShoot, onHit }) {
                     const d = Math.hypot(b.x - mx, b.y - my);
                     
                     if (d < 20) {
-                        // On utilise la Ref pour appeler la fonction sans relancer l'effet
-                        if (onHitRef.current) onHitRef.current(5); 
+                        // --- CORRECTION SONORE ICI ---
+                        // On crée une nouvelle instance audio et on la joue directement
+                        // Cela permet de jouer le son même si le précédent n'est pas fini (superposition)
+                        const hitSound = new Audio(damage);
+                        hitSound.volume = 0.5; // Optionnel : baisser un peu le volume si c'est trop fort
+                        hitSound.play(); 
+
+                        if (onHitRef.current) onHitRef.current(5);
                         return false; // Supprime la balle IMMÉDIATEMENT
                     }
                     
@@ -223,6 +234,7 @@ function Game({ pseudo, onShoot, onHit }) {
 
     const handleClick = (e) => {
         const id = Date.now();
+        laserSound.play();
         const newBlast = { id, x: e.clientX, y: e.clientY };
         setBlasts((prev) => [...prev, newBlast]);
 
