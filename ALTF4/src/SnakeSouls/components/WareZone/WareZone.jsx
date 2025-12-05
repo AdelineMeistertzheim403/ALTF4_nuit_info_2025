@@ -398,7 +398,14 @@ export function WareZone({
         setSurvivalTime(difficultySystem.getFormattedTime());
 
         // Mettre à jour les paramètres des ennemis selon la difficulté
-        enemyManager.updateDifficultyParams(difficultySystem.getEnemyParams());
+        const enemyParams = difficultySystem.getEnemyParams();
+        enemyManager.updateDifficultyParams(enemyParams);
+
+        // Mettre à jour le multiplicateur de croissance sur tous les ennemis
+        const growthMultiplier = enemyParams.growthMultiplier || 1;
+        enemyManager.enemies.forEach(enemy => {
+            enemy.setGrowthMultiplier(growthMultiplier);
+        });
 
         // ---- SPAWN MALUS (selon difficulté) ----
         if (difficultySystem.areMalusEnabled()) {

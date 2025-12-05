@@ -42,6 +42,9 @@ export class EnemySnake {
     // Stats
     this.alive = true;
     this.headSize = 20;
+
+    // Croissance exponentielle - plus le temps passe, plus ils grandissent vite
+    this.growthMultiplier = 1; // Sera mis à jour par DifficultySystem
   }
 
   /**
@@ -146,11 +149,23 @@ export class EnemySnake {
 
   /**
    * Ajoute un segment (quand il mange un déchet)
+   * Avec croissance exponentielle basée sur growthMultiplier
    */
   addSegment() {
-    this.segments.push({
-      image: this.segmentImage
-    });
+    // Ajouter plusieurs segments selon le multiplicateur de croissance
+    const segmentsToAdd = Math.max(1, Math.floor(this.growthMultiplier));
+    for (let i = 0; i < segmentsToAdd; i++) {
+      this.segments.push({
+        image: this.segmentImage
+      });
+    }
+  }
+
+  /**
+   * Met à jour le multiplicateur de croissance depuis DifficultySystem
+   */
+  setGrowthMultiplier(multiplier) {
+    this.growthMultiplier = multiplier;
   }
 
   /**
