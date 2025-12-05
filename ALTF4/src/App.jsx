@@ -7,9 +7,9 @@ import KeysPage from "./pages/KeysPage.jsx";
 import DigicodePage from "./pages/AdminLogin";
 import GrooveBoxMain from './pages/GrooveBoxMain'
 import Scenario from './pages/Scenarios/Scenario';
-import Defis1 from "./pages/Defis1.jsx";
-import Defis2 from "./pages/Defis2.jsx";
-import Defis3 from "./pages/Defis3.jsx";
+import Defis1 from "./pages/Defis1";
+import Defis2 from "./pages/Defis2";
+import Defis3 from "./pages/Defis3";
 
 
 function App() {

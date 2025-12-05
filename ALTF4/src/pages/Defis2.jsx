@@ -1,5 +1,5 @@
 import { useState } from "react";
-import "../styles/Defis2.css";
+import styles from "../styles/Defis2.module.css";
 
 export default function Defis2() {
     const [revealed, setRevealed] = useState(false);
@@ -16,10 +16,10 @@ export default function Defis2() {
     function obtainKey() {
         const unlocked = JSON.parse(localStorage.getItem("unlockedKeys") || "[]");
 
-        // ajoute seulement si pas déjà dedans
         if (!unlocked.includes("silver")) unlocked.push("silver");
 
         localStorage.setItem("unlockedKeys", JSON.stringify(unlocked));
+        localStorage.setItem("buildingCompleted", 2);
 
         setKeyObtained(true);
 
@@ -28,19 +28,17 @@ export default function Defis2() {
         }, 2500);
     }
 
-
     return (
-        <div className="page">
-            <div className="container">
+        <div className={styles.page}>
+            <div className={styles.container}>
                 <h1>▌CONTRAT CACHE▌</h1>
 
-                <div className="contract-container">
-                    <div className={`contract-box ${revealed ? "revealed" : ""}`}>
-                        <div className="contract-title">CONDITIONS D'UTILISATION</div>
+                <div className={styles.contractContainer}>
+                    <div className={`${styles.contractBox} ${revealed ? styles.revealed : ""}`}>
+                        <div className={styles.contractTitle}>CONDITIONS D'UTILISATION</div>
 
-                        {/* Texte innocent */}
                         {!revealed && (
-                            <div className="contract-content">
+                            <div className={styles.contractContent}>
                                 "Vos données peuvent être utilisées pour améliorer nos services"
                                 <br />
                                 <br />
@@ -48,16 +46,15 @@ export default function Defis2() {
                             </div>
                         )}
 
-                        {/* Contenu caché */}
                         {revealed && (
-                            <div className="hidden-content revealed">
+                            <div className={`${styles.hiddenContent} ${styles.revealed}`}>
                                 <strong>LA VRAIE HISTOIRE...</strong>
                                 <br />
                                 <br />
                                 Vos données voyagent dans le monde entier et sont :
                                 <br />
                                 <br />
-                                <ul className="location-list">
+                                <ul className={styles.locationList}>
                                     <li>Revendues à des tiers</li>
                                     <li>Utilisées pour la publicité ciblée</li>
                                     <li>Stockées sur des serveurs étrangers</li>
@@ -66,27 +63,20 @@ export default function Defis2() {
                                     <li>Vendues au plus offrant</li>
                                 </ul>
 
-                                {/* Carte */}
-                                <div className="world-map">
-                                    <div className="data-point" style={{ left: "10%", top: "20%" }}></div>
-                                    <div className="data-point" style={{ left: "30%", top: "50%" }}></div>
-                                    <div className="data-point" style={{ left: "50%", top: "30%" }}></div>
-                                    <div className="data-point" style={{ left: "70%", top: "60%" }}></div>
-                                    <div className="data-point" style={{ left: "85%", top: "40%" }}></div>
+                                <div className={styles.worldMap}>
+                                    <div className={styles.dataPoint} style={{ left: "10%", top: "20%" }}></div>
+                                    <div className={styles.dataPoint} style={{ left: "30%", top: "50%" }}></div>
+                                    <div className={styles.dataPoint} style={{ left: "50%", top: "30%" }}></div>
+                                    <div className={styles.dataPoint} style={{ left: "70%", top: "60%" }}></div>
+                                    <div className={styles.dataPoint} style={{ left: "85%", top: "40%" }}></div>
                                 </div>
 
-                                {/* BOUTON CLÉ */}
                                 {!keyObtained ? (
-                                    <button
-                                        className="btn-key"
-                                        onClick={obtainKey}
-                                    >
-
-                                    🔑 RÉCUPÉRER LA CLÉ 🔑
+                                    <button className={styles.btnKey} onClick={obtainKey}>
+                                        🔑 RÉCUPÉRER LA CLÉ 🔑
                                     </button>
-
                                 ) : (
-                                    <div className="key-box" id="keyDisplay">
+                                    <div className={styles.keyBox} id="keyDisplay">
                                         ✔ Clé Argent récupérée !
                                     </div>
                                 )}
@@ -94,24 +84,24 @@ export default function Defis2() {
                         )}
                     </div>
 
-                    <div className="button-container">
+                    <div className={styles.buttonContainer}>
                         {!revealed ? (
-                            <button className="btn-reveal" onClick={revealTruth}>
+                            <button className={styles.btnReveal} onClick={revealTruth}>
                                 ⚠ DÉCOUVRIR LA VÉRITÉ ⚠
                             </button>
                         ) : (
-                            <button className="btn-back" onClick={hideTruth}>
+                            <button className={styles.btnBack} onClick={hideTruth}>
                                 ← RETOUR
                             </button>
                         )}
                     </div>
 
-                    <div className="disclaimer">
+                    <div className={styles.disclaimer}>
                         ▼ ATTENTION: CONTENU HAUT RÉALISME ▼
                     </div>
                 </div>
 
-                <div className="nav-link">
+                <div className={styles.navLink}>
                     <a href="/">← Retour aux portails</a>
                 </div>
             </div>

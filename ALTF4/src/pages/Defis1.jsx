@@ -1,5 +1,5 @@
 import { useState } from "react";
-import "../styles/Defis1.css";
+import styles from "../styles/Defis1.module.css";
 
 export default function Defis1() {
     const [activeWindow, setActiveWindow] = useState(null);
@@ -17,12 +17,12 @@ export default function Defis1() {
             setMessage("✓ VOUS AVEZ DEBLOQUÉ LA CLÉ BRONZE");
             setMessageClass("good");
 
-            // --- ⬇⬇ NOUVELLE LOGIQUE DE STOCKAGE ---
             const keys = JSON.parse(localStorage.getItem("unlockedKeys") || "[]");
 
             if (!keys.includes("bronze")) {
                 keys.push("bronze");
                 localStorage.setItem("unlockedKeys", JSON.stringify(keys));
+                localStorage.setItem("buildingCompleted", 1);
             }
             setTimeout(() => {
                 window.location.href = "/keys";
@@ -34,24 +34,23 @@ export default function Defis1() {
     }
 
     return (
-        <div className="page">
-            <div className="container">
+        <div className={styles.page}>
+            <div className={styles.container}>
                 <h1>▌CHOIX SYSTEME▌</h1>
 
-                <div className="windows-container">
-                    {/* ---- WINDOWS ---- */}
-                    <div className="window-wrapper">
+                <div className={styles.windowsContainer}>
+                    <div className={styles.windowWrapper}>
                         <div
-                            className={`window ${activeWindow === "windows" ? "active" : ""}`}
+                            className={`${styles.window} ${activeWindow === "windows" ? styles.active : ""}`}
                             onClick={() => handleClick("windows")}
                             tabIndex={0}
                             onKeyDown={(e) =>
                                 (e.key === "Enter" || e.key === " ") && handleClick("windows")
                             }
                         >
-                            <div className="window-frame">
-                                <div className="window-title">&gt; WINDOWS.EXE</div>
-                                <div className="window-content">
+                            <div className={styles.windowFrame}>
+                                <div className={styles.windowTitle}>&gt; WINDOWS.EXE</div>
+                                <div className={styles.windowContent}>
                                     <img
                                         src="https://user-gen-media-assets.s3.amazonaws.com/seedream_images/65b00cd1-ead2-4b27-8ab2-253ba9a87658.png"
                                         alt="Windows"
@@ -60,7 +59,7 @@ export default function Defis1() {
                             </div>
                         </div>
 
-                        <div className="window-texte">
+                        <div className={styles.windowTexte}>
                             Ça coûte cher<br />
                             Ton PC devient lent<br />
                             Tes données voyagent<br />
@@ -68,19 +67,18 @@ export default function Defis1() {
                         </div>
                     </div>
 
-                    {/* ---- LINUX ---- */}
-                    <div className="window-wrapper">
+                    <div className={styles.windowWrapper}>
                         <div
-                            className={`window ${activeWindow === "linux" ? "active" : ""}`}
+                            className={`${styles.window} ${activeWindow === "linux" ? styles.active : ""}`}
                             onClick={() => handleClick("linux")}
                             tabIndex={0}
                             onKeyDown={(e) =>
                                 (e.key === "Enter" || e.key === " ") && handleClick("linux")
                             }
                         >
-                            <div className="window-frame">
-                                <div className="window-title">&gt; LINUX.SH</div>
-                                <div className="window-content">
+                            <div className={styles.windowFrame}>
+                                <div className={styles.windowTitle}>&gt; LINUX.SH</div>
+                                <div className={styles.windowContent}>
                                     <img
                                         src="https://user-gen-media-assets.s3.amazonaws.com/seedream_images/65aa3498-04e3-4af2-9ed5-53be806db45d.png"
                                         alt="Linux"
@@ -89,7 +87,7 @@ export default function Defis1() {
                             </div>
                         </div>
 
-                        <div className="window-texte">
+                        <div className={styles.windowTexte}>
                             C'est GRATUIT<br />
                             Ton PC devient rapide<br />
                             Tes données RESTENT chez toi<br />
@@ -98,14 +96,14 @@ export default function Defis1() {
                     </div>
                 </div>
 
-                <div className="click-hint">▼ CLIQUEZ SUR UNE FENETRE ▼</div>
+                <div className={styles.clickHint}>▼ CLIQUEZ SUR UNE FENETRE ▼</div>
 
-                <div className="nav-link">
+                <div className={styles.navLink}>
                     <a href="/">← Retour aux portails</a>
                 </div>
             </div>
 
-            <div className={`message ${showMessage ? "show" : ""} ${messageClass}`}>
+            <div className={`${styles.message} ${showMessage ? styles.show : ""} ${styles[messageClass]}`}>
                 {message}
             </div>
         </div>

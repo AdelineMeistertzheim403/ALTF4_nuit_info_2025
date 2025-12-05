@@ -15,6 +15,7 @@ export default function KeysPage() {
     });
 
     useEffect(() => {
+        document.body.style.backgroundImage = "url('./image_ville.jpeg')";
         const saved = JSON.parse(localStorage.getItem("unlockedKeys") || "[]");
 
         saved.forEach(k => {
