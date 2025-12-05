@@ -126,7 +126,7 @@ export function WareZone({
 
         const initWorld = async () => {
             try {
-                const world = await createWorld({ tileSize: 256, seed: 42 });
+                const world = await createWorld({ tileSize: 2048, seed: 42 });
                 worldRef.current = world;
                 setWorldReady(true);
                 console.log('[WareZone] World initialized with textures');

@@ -110,23 +110,25 @@ export class TileMap {
   }
 
   /**
-   * Récupère toutes les tuiles visibles dans un rectangle
-   * 
+   * Récupère les tuiles autour du joueur (grille 4x4 max pour la perf)
+   *
    * @param {Object} bounds - Zone visible { left, right, top, bottom } en pixels monde
    * @returns {Array} - Liste des tuiles à dessiner
    */
   getVisibleTiles(bounds) {
     const tiles = [];
-    
-    // Convertir les bounds en coordonnées de tuiles
-    const startTileX = Math.floor(bounds.left / this.tileSize) - 1;
-    const endTileX = Math.ceil(bounds.right / this.tileSize) + 1;
-    const startTileY = Math.floor(bounds.top / this.tileSize) - 1;
-    const endTileY = Math.ceil(bounds.bottom / this.tileSize) + 1;
 
-    // Générer/récupérer chaque tuile visible
-    for (let x = startTileX; x <= endTileX; x++) {
-      for (let y = startTileY; y <= endTileY; y++) {
+    // Centre de la vue (position du joueur)
+    const centerX = (bounds.left + bounds.right) / 2;
+    const centerY = (bounds.top + bounds.bottom) / 2;
+
+    // Tuile centrale du joueur
+    const centerTileX = Math.floor(centerX / this.tileSize);
+    const centerTileY = Math.floor(centerY / this.tileSize);
+
+    // Générer une grille 4x4 autour du joueur (-2 à +1 pour couvrir l'écran)
+    for (let x = centerTileX - 2; x <= centerTileX + 1; x++) {
+      for (let y = centerTileY - 2; y <= centerTileY + 1; y++) {
         const tile = this.generateTile(x, y);
         tiles.push(tile);
       }
