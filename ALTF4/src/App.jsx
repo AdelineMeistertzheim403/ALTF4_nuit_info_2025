@@ -10,7 +10,8 @@ import Scenario from './pages/Scenarios/Scenario';
 import Defis1 from "./pages/Defis1";
 import Defis2 from "./pages/Defis2";
 import Defis3 from "./pages/Defis3";
-
+import Admin from "./pages/Scenarios/Admin";
+import SnakeSouls from "./SnakeSouls/App";
 
 function App() {
   return (
@@ -25,6 +26,9 @@ function App() {
           <Route path="/defis1" element={<Defis1/>}/>
           <Route path="/defis2" element={<Defis2/>}/>
           <Route path="/defis3" element={<Defis3/>}/>
+          <Route path="/admin" element={<Admin/>}/>
+          <Route path="/snake-souls" element={<SnakeSouls/>}/>
+
 
 
         <Route path="*" element={<Scenario />} /> {/* Route 404 : redirige vers la page principale */}

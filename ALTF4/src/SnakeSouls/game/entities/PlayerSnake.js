@@ -32,17 +32,17 @@ export default class PlayerSnake extends Snake {
     }
 
     // Vitesse variable
-    let currentSpeed = this.speed;
+    let speedMultiplier = 1;
     if (this.controls.up) {
-      currentSpeed = this.speed * 1.8;
+      speedMultiplier = 1.8;
     }
     if (this.controls.down) {
-      currentSpeed = this.speed * 0.5;
+      speedMultiplier = 0.5;
     }
 
-    // Appliquer la vitesse temporairement
+    // Appliquer la vitesse
     const originalSpeed = this.speed;
-    this.speed = currentSpeed;
+    this.speed = this.speed * speedMultiplier;
     
     // Déplacer
     super.update(deltaTime);

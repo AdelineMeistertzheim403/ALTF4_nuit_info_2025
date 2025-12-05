@@ -1,6 +1,17 @@
 // Configuration des bonus du jeu
 export const BONUSES = [
   {
+    id: 'bird',
+    name: 'Thunderbird',
+    description: '+1 Vie',
+    color: '#0A84FF',
+    effect: 'extraLife',
+    value: 1,
+    duration: 0, // permanent
+    points: 100,
+    sprite: 'bird.png'
+  },
+  {
     id: 'ubuntu',
     name: 'Ubuntu',
     description: 'Augmente la vitesse',
@@ -54,6 +65,17 @@ export const BONUSES = [
     duration: 7000,
     points: 60,
     sprite: 'mint.png'
+  },
+  {
+    id: 'linux',
+    name: 'Linux',
+    description: 'Attire les déchets',
+    color: '#FCC133',
+    effect: 'magnetism',
+    value: 300, // Rayon d'attraction en pixels
+    duration: 8000,
+    points: 80,
+    sprite: 'linux.png'
   }
 ];
 
@@ -63,14 +85,18 @@ export const EFFECT_TYPES = {
   INVINCIBLE: 'invincible',
   DOUBLE_POINTS: 'doublePoints',
   GROW: 'grow',
-  SLOW_ENEMIES: 'slowEnemies'
+  SLOW_ENEMIES: 'slowEnemies',
+  MAGNETISM: 'magnetism',
+  EXTRA_LIFE: 'extraLife'
 };
 
 // Probabilités d'apparition (total = 100)
 export const BONUS_SPAWN_RATES = {
-  ubuntu: 25,
-  fedora: 15,
+  bird: 5,      // Rare - vie extra
+  ubuntu: 18,
+  fedora: 12,
   debian: 10,
-  arch: 35,
-  mint: 15
+  arch: 25,
+  mint: 15,
+  linux: 15
 };
