@@ -59,7 +59,7 @@ export default function GrooveBoxMain() {
         <div className="groove-header">
           <div className="groove-title-row">
             <h1 className="groove-title">GrooveBox Visualizer</h1>
-            <button className="exit-btn" onClick={() => navigate("/scenario")}>
+            <button className="exit-btn" onClick={() => navigate("/")}>
               Retour Scénario
             </button>
           </div>
