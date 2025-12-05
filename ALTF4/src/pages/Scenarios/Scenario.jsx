@@ -111,7 +111,7 @@ function App() {
                         Défi 3
                     </button>
                     {showSecretButton && (
-                        <button className="secret-button" onClick={() => navigate('/snake')}><img src="./Snake.png" alt="Snake game" /></button>
+                        <button className="secret-button" onClick={() => navigate('/snake-souls')}><img src="./Snake.png" alt="Snake game" /></button>
                     )}
                     <LaserGame />
                     <div style={{position: "fixed", top: "64px", right: "16px", zIndex: 9999,}}>
