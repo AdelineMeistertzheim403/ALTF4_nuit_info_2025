@@ -1,10 +1,4 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Coût PC - Arcade Portal</title>
-    <style>
+
         :root {
             --color-background: #0a0e27;
             --color-primary: #00ff88;
@@ -61,12 +55,12 @@
             z-index: 1;
             display: flex;
             flex-direction: column;
-            align-items: center;
             gap: 30px;
-            max-width: 900px;
-            margin: 0 20px;
+            margin: auto;
             max-height: 90vh;
             overflow-y: auto;
+            justify-content: center;
+            min-width: 100%;
         }
 
         h1 {
@@ -81,6 +75,7 @@
             letter-spacing: 4px;
             animation: flicker 0.15s infinite, glow 2s ease-in-out infinite;
             font-weight: bold;
+            margin-top: 2rem;
         }
 
         @keyframes flicker {
@@ -412,92 +407,3 @@
             color: #ff1744;
             text-shadow: 0 0 5px #ff1744;
         }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>▌COÛT DU PC▌</h1>
-        
-        <div class="comparison-container">
-            <!-- Windows PC -->
-            <div class="pc-card windows">
-                <div class="pc-title">WINDOWS PC</div>
-                <div class="pc-specs">
-                    <div class="spec-item">💰 Coût initial: 1200€</div>
-                    <div class="spec-item">📉 Ralentit avec le temps</div>
-                    <div class="spec-item">🔧 Mise à jour coûteuse</div>
-                    <div class="spec-item">⏰ Durée de vie: 3-4 ans</div>
-                    <div class="spec-item">❌ Support limité</div>
-                </div>
-                <div class="price-tag">TOTAL: 2500€<br>(-5 ans)</div>
-                <button class="action-button" onclick="openModal('error')">ACHETER</button>
-            </div>
-
-            <!-- Ubuntu PC -->
-            <div class="pc-card ubuntu">
-                <div class="pc-title">UBUNTU PC</div>
-                <div class="pc-specs">
-                    <div class="spec-item">💚 Coût initial: 1000€</div>
-                    <div class="spec-item">⚡ Reste rapide toujours</div>
-                    <div class="spec-item">🆓 Mises à jour gratuites</div>
-                    <div class="spec-item">♻️ Durée de vie: 10+ ans</div>
-                    <div class="spec-item">🔄 Support communautaire</div>
-                </div>
-                <div class="price-tag">TOTAL: 1000€<br>(5+ ans)</div>
-                <button class="action-button" onclick="openModal('success')">CHOISIR</button>
-            </div>
-        </div>
-
-        <div class="disclaimer">
-            ▼ ÉCONOMISEZ ET GAGNEZ EN PERFORMANCE ▼
-        </div>
-
-        <div class="nav-link">
-            <a href="index.html">← Retour aux portails</a>
-        </div>
-    </div>
-
-    <!-- Modal Popup -->
-    <div class="modal-overlay" id="modalOverlay">
-        <div class="modal-content" id="modalContent">
-            <span class="modal-close" onclick="closeModal()">&times;</span>
-            <div class="modal-title" id="modalTitle">✓ CLÉ DÉVERROUILLÉE ✓</div>
-            <div class="modal-message" id="modalMessage">Vous avez récupéré la clé!</div>
-        </div>
-    </div>
-
-    <script>
-        function openModal(type = 'success') {
-            const modalContent = document.getElementById('modalContent');
-            const modalTitle = document.getElementById('modalTitle');
-            const modalMessage = document.getElementById('modalMessage');
-
-            if (type === 'error') {
-                modalContent.classList.add('error');
-                modalTitle.classList.add('error');
-                modalMessage.classList.add('error');
-                modalTitle.textContent = '⚠ MAUVAIS CHOIX ⚠';
-                modalMessage.textContent = 'Windows vous ruinera. Vous avez perdu!';
-            } else {
-                modalContent.classList.remove('error');
-                modalTitle.classList.remove('error');
-                modalMessage.classList.remove('error');
-                modalTitle.textContent = '✓ CLÉ DÉVERROUILLÉE ✓';
-                modalMessage.textContent = 'Vous avez récupéré la clé Linux!';
-            }
-
-            document.getElementById('modalOverlay').classList.add('show');
-        }
-
-        function closeModal() {
-            document.getElementById('modalOverlay').classList.remove('show');
-        }
-
-        document.getElementById('modalOverlay').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeModal();
-            }
-        });
-    </script>
-</body>
-</html>
