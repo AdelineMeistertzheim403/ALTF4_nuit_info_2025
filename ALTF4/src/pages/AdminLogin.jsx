@@ -1,10 +1,26 @@
 // src/pages/AdminLogin.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import "./AdminLogin.css"; 
+import "./AdminLogin.css";
 
 export default function AdminLogin() {
-  const navigate = useNavigate();
+    useEffect(() => {
+        // Récupère le tableau des clés déverrouillées
+        const stored = localStorage.getItem("unlockedKeys");
+        const unlocked = stored ? JSON.parse(stored) : [];
+
+        // Vérifie qu'on possède bien: bronze, silver, gold
+        const hasAll =
+            unlocked.includes("bronze") &&
+            unlocked.includes("silver") &&
+            unlocked.includes("gold");
+
+        if (!hasAll) {
+            navigate("/keys");
+        }
+    }, []);
+
+    const navigate = useNavigate();
   const [input, setInput] = useState([]);
   const [error, setError] = useState(false);
 
@@ -50,9 +66,18 @@ export default function AdminLogin() {
         })}
       </div>
 
+      {/* Réinitialiser (si tu veux le remettre plus tard) */}
       {/* <button className="reset-button" onClick={handleReset}>
         Réinitialiser
       </button> */}
+
+      {/* Nouveau bouton retour */}
+      <button
+        className="home-button"
+        onClick={() => navigate("/")}
+      >
+        Retour à l'accueil
+      </button>
     </div>
   );
 }

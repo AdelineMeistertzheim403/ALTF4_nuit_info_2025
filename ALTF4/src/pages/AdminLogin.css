@@ -90,3 +90,27 @@ body {
   color: #ffb3cd;
   transform: scale(1.08);
 }
+
+.home-button {
+  margin-top: 20px;
+  padding: 12px 28px;
+  background: transparent;
+  border: 2px solid #72d5ff;
+  color: #72d5ff;
+  border-radius: 10px;
+  font-size: clamp(1rem, 3vw, 1.2rem);
+  letter-spacing: 1px;
+  cursor: pointer;
+
+  text-shadow: 0 0 8px #4fc3f7;
+  box-shadow: 0 0 12px #00caff55, inset 0 0 12px #00bfff33;
+
+  transition: 0.25s ease;
+}
+
+.home-button:hover {
+  background: #00aaff22;
+  color: white;
+  box-shadow: 0 0 18px #00e5ff, inset 0 0 15px #0099ff;
+  transform: scale(1.08);
+}
