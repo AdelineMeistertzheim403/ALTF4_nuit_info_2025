@@ -26,6 +26,13 @@ export default function KeysPage() {
         { type: "bronze", x: 25, y: 18 },
     ];
 
+    const lockedImages = {
+        gold: "/locks/gold_key_locked.png",
+        silver: "/locks/silver_key_locked.png",
+        bronze: "/locks/bronze_key_locked.png",
+    };
+
+
     const allUnlocked =
         lockedKeys.gold &&
         lockedKeys.silver &&
@@ -77,35 +84,42 @@ export default function KeysPage() {
             }}
         >
             {/* KEYS */}
-            <DraggableKey
-                filename="golden_key.png"
-                initialX={10}
-                initialY={30}
-                locked={lockedKeys.gold}
-                rotation={rotations.gold}
-                onMove={(p) => setKeyData((o) => ({ ...o, gold: p }))}
-                onRotate={(deg) => setRotations((o) => ({ ...o, gold: deg }))}
-            />
+            {!lockedKeys.gold && (
+                <DraggableKey
+                    filename="golden_key.png"
+                    initialX={10}
+                    initialY={30}
+                    locked={lockedKeys.gold}
+                    rotation={rotations.gold}
+                    onMove={(p) => setKeyData((o) => ({ ...o, gold: p }))}
+                    onRotate={(deg) => setRotations((o) => ({ ...o, gold: deg }))}
+                />
+            )}
 
-            <DraggableKey
-                filename="silver_key.png"
-                initialX={0}
-                initialY={50}
-                locked={lockedKeys.silver}
-                rotation={rotations.silver}
-                onMove={(p) => setKeyData((o) => ({ ...o, silver: p }))}
-                onRotate={(deg) => setRotations((o) => ({ ...o, silver: deg }))}
-            />
 
-            <DraggableKey
-                filename="bronze_key.png"
-                initialX={0}
-                initialY={10}
-                locked={lockedKeys.bronze}
-                rotation={rotations.bronze}
-                onMove={(p) => setKeyData((o) => ({ ...o, bronze: p }))}
-                onRotate={(deg) => setRotations((o) => ({ ...o, bronze: deg }))}
-            />
+            {!lockedKeys.silver && (
+                <DraggableKey
+                    filename="silver_key.png"
+                    initialX={0}
+                    initialY={50}
+                    locked={lockedKeys.silver}
+                    rotation={rotations.silver}
+                    onMove={(p) => setKeyData((o) => ({ ...o, silver: p }))}
+                    onRotate={(deg) => setRotations((o) => ({ ...o, silver: deg }))}
+                />
+            )}
+
+            {!lockedKeys.bronze && (
+                <DraggableKey
+                    filename="bronze_key.png"
+                    initialX={0}
+                    initialY={10}
+                    locked={lockedKeys.bronze}
+                    rotation={rotations.bronze}
+                    onMove={(p) => setKeyData((o) => ({ ...o, bronze: p }))}
+                    onRotate={(deg) => setRotations((o) => ({ ...o, bronze: deg }))}
+                />
+            )}
 
             {/* LOCKS */}
             {locks.map((lock) => {
@@ -114,18 +128,33 @@ export default function KeysPage() {
 
                 const near = isOnLock(lock, key);
                 const horizontal = isHorizontal(angle);
-
                 const valid = near && horizontal;
 
                 if (valid && !lockedKeys[lock.type]) {
-                    // 1. Lock la clé
                     setLockedKeys((old) => ({ ...old, [lock.type]: true }));
-
-                    // 2. Remet la clé parfaitement droite
                     setRotations((old) => ({ ...old, [lock.type]: -90 }));
                 }
 
+                // 🔥 si la clé est verrouillée, on remplace la serrure normale
+                if (lockedKeys[lock.type]) {
+                    return (
+                        <img
+                            key={lock.type}
+                            src={lockedImages[lock.type]}
+                            style={{
+                                position: "absolute",
+                                left: `${lock.x}%`,
+                                top: `${lock.y}%`,
+                                width: "14%",
+                                pointerEvents: "none",
+                                transition: "0.3s",
+                            }}
+                        />
+                    );
+                }
 
+
+                // 🔥 serrure normale (non validée)
                 return (
                     <img
                         key={lock.type}
@@ -138,17 +167,16 @@ export default function KeysPage() {
                             pointerEvents: "none",
                             transition: "0.2s",
                             filter:
-                                lockedKeys[lock.type]
-                                    ? "drop-shadow(0 0 20px #00ff00)"
-                                    : valid
-                                        ? "drop-shadow(0 0 20px #ffd700)"
-                                        : near
-                                            ? "drop-shadow(0 0 20px red)"
-                                            : "none",
+                                valid
+                                    ? "drop-shadow(0 0 20px #ffd700)"
+                                    : near
+                                        ? "drop-shadow(0 0 20px red)"
+                                        : "none",
                         }}
                     />
                 );
             })}
+
             {allUnlocked && (
                 <button
                     onClick={() => window.location.href = "/digicode"}
