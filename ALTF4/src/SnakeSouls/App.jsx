@@ -2,6 +2,7 @@
 import React, { useState, useCallback } from 'react';
 import { WareZone } from './components/WareZone';
 import backgroundImage from './assets/images/snakesouls.webp';
+import youDiedImage from './assets/images/youdied.png';
 import '../index.css';
 
 const SnakeSoulsApp = () => {
@@ -176,26 +177,66 @@ const SnakeSoulsApp = () => {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          background: 'rgba(0, 0, 0, 0.8)',
+          background: '#000',
         }}>
-          <h2 style={{ color: '#EF4444', fontSize: '3rem', marginBottom: '20px' }}>
-            GAME OVER
-          </h2>
-          <p style={{ fontSize: '1.5rem', marginBottom: '30px', color: 'white' }}>
+          {/* You Died background image */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundImage: `url(${youDiedImage})`,
+            backgroundSize: 'contain',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            opacity: 0.9,
+            zIndex: 0,
+          }} />
+
+          <p style={{ 
+            fontSize: '1.5rem', 
+            marginBottom: '30px', 
+            color: '#d4af37',
+            position: 'relative',
+            zIndex: 1,
+            fontFamily: 'Georgia, serif',
+            textShadow: '2px 2px 8px rgba(0, 0, 0, 0.9)',
+            marginTop: '200px'
+          }}>
             Score Final: {score}
           </p>
           <button
             onClick={resetGame}
             style={{
-              padding: '15px 40px',
-              fontSize: '1.2rem',
-              fontWeight: 'bold',
-              color: 'white',
-              background: 'linear-gradient(135deg, #60A5FA 0%, #3B82F6 100%)',
-              border: 'none',
-              borderRadius: '8px',
+              padding: '20px 50px',
+              fontSize: '1.5rem',
+              fontWeight: '600',
+              letterSpacing: '2px',
+              color: '#d4af37',
+              background: 'linear-gradient(180deg, rgba(40, 40, 40, 0.9) 0%, rgba(20, 20, 20, 0.95) 100%)',
+              border: '3px solid #6b5d47',
+              borderRadius: '0',
               cursor: 'pointer',
-              boxShadow: '0 4px 8px rgba(96, 165, 250, 0.3)'
+              boxShadow: 'inset 0 0 20px rgba(0, 0, 0, 0.8), 0 0 30px rgba(212, 175, 55, 0.3)',
+              transition: 'all 0.4s ease',
+              position: 'relative',
+              zIndex: 1,
+              textTransform: 'uppercase',
+              fontFamily: 'Georgia, serif',
+              textShadow: '0 0 10px rgba(212, 175, 55, 0.5), 2px 2px 4px rgba(0, 0, 0, 0.8)'
+            }}
+            onMouseOver={(e) => {
+              e.target.style.transform = 'scale(1.08)';
+              e.target.style.color = '#ffecb3';
+              e.target.style.borderColor = '#d4af37';
+              e.target.style.boxShadow = 'inset 0 0 25px rgba(0, 0, 0, 0.9), 0 0 50px rgba(212, 175, 55, 0.6)';
+            }}
+            onMouseOut={(e) => {
+              e.target.style.transform = 'scale(1)';
+              e.target.style.color = '#d4af37';
+              e.target.style.borderColor = '#6b5d47';
+              e.target.style.boxShadow = 'inset 0 0 20px rgba(0, 0, 0, 0.8), 0 0 30px rgba(212, 175, 55, 0.3)';
             }}
           >
             REJOUER
