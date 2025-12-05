@@ -914,6 +914,18 @@ export function WareZone({
                 className="warezone__canvas"
             />
 
+            {/* Overlay Cyberpunk Blade Runner */}
+            <div className="warezone__cyberpunk-overlay">
+                {/* Vignette d'assombrissement */}
+                <div className="warezone__dark-vignette"></div>
+                
+                {/* Bordures néon sur les 4 côtés */}
+                <div className="warezone__neon-border-top"></div>
+                <div className="warezone__neon-border-bottom"></div>
+                <div className="warezone__neon-border-left"></div>
+                <div className="warezone__neon-border-right"></div>
+            </div>
+
             {/* Overlay pour UI (children passés par le parent) */}
             <div className="warezone__overlay">
                 {children}
