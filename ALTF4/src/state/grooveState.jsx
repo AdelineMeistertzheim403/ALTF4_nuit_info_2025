@@ -16,6 +16,7 @@ export const patternAtom = atom({
 export const playingAtom = atom(false);
 
 export const soundControlsAtom = atom({
+  bpm: 120,
   reverbWet: 0.2,
   delayFeedback: 0.18,
   hatTone: 450,

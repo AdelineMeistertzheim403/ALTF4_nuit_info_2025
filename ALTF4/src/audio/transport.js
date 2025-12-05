@@ -48,6 +48,9 @@ const instrumentMap = {
 
 export function updateTransportControls(nextControls = {}) {
   controlsRef = { ...controlsRef, ...nextControls };
+  if (typeof nextControls.bpm === "number") {
+    Tone.Transport.bpm.value = nextControls.bpm;
+  }
 }
 
 export function updateMutes(mutes = {}) {
@@ -57,7 +60,7 @@ export function updateMutes(mutes = {}) {
 export function startTransport(pattern, controls, mutes, setStep) {
   updateTransportControls(controls);
   updateMutes(mutes);
-  Tone.Transport.bpm.value = 120;
+  Tone.Transport.bpm.value = controls?.bpm ?? 120;
 
   Tone.Transport.scheduleRepeat((time) => {
     const ticksPerStep = Tone.Transport.PPQ / 4; // 16th note
@@ -86,7 +89,11 @@ export function startTransport(pattern, controls, mutes, setStep) {
       if (mutesRef?.[key]) return;
       if (!pattern?.[key]?.[step]) return;
       if (typeof onTrigger === "function") onTrigger(time);
-      synth.triggerAttackRelease(note, dur, time);
+      if (note === undefined || note === null) {
+        synth.triggerAttackRelease(dur, time);
+      } else {
+        synth.triggerAttackRelease(note, dur, time);
+      }
     });
   }, "16n");
 

@@ -1,65 +1,45 @@
-import React, { useState, useEffect, useRef } from 'react';
-import './TempoSlider.css';
+import { useState, useEffect } from "react";
+import "./TempoSlider.css";
 
-const BpmSelector = ({ initialBpm = 120, onBpmChange }) => {
+const TempoSlider = ({ initialBpm = 120, onBpmChange }) => {
   const [bpm, setBpm] = useState(initialBpm);
 
+  useEffect(() => {
+    setBpm(initialBpm);
+  }, [initialBpm]);
 
   useEffect(() => {
-    if (onBpmChange) {
+    if (typeof onBpmChange === "function") {
       onBpmChange(bpm);
     }
   }, [bpm, onBpmChange]);
 
-  const handleMouseDown = (e) => {
-    // lock le pointer sur l'element
-    e.target.requestPointerLock();
+  const adjust = (delta) => {
+    setBpm((prev) => Math.min(Math.max(prev + delta, 60), 200));
   };
-
-  const handleMouseMove = (e) => {
-
-    if (document.pointerLockElement) {
-      const delta = -e.movementY;
-
-      const sensitivity = 4;
-      const change = Math.round(delta / sensitivity);
-
-      setBpm((prevBpm) => Math.min(Math.max(prevBpm + change, 40), 220));
-    }
-  };
-
-  const handleMouseUp = () => {
-    // sortir du lock quand lache le click
-    document.exitPointerLock();
-  };
-
-  //listener attaché au document pour scroller en étant lock dans le button
-  useEffect(() => {
-    const onMove = (e) => handleMouseMove(e);
-    const onUp = () => handleMouseUp();
-
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-
-    return () => {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-    };
-  }, []);
 
   return (
-    <div className="bpm-selector">
-      <div
-        onMouseDown={handleMouseDown}
-        className="bpm-drag-area"
-        title="Click and drag up/down to change BPM"
-      >
-        <div className="bpm-display">
-          <div className="bpm-value">{bpm}</div>
-        </div>
+    <div className="bpm-slider">
+      <div className="bpm-readout">
+        <span className="bpm-label">BPM</span>
+        <span className="bpm-value">{bpm}</span>
+      </div>
+      <input
+        type="range"
+        min={60}
+        max={200}
+        step={1}
+        value={bpm}
+        onChange={(e) => setBpm(Number(e.target.value))}
+      />
+      <div className="bpm-buttons">
+        <button onClick={() => adjust(-5)} aria-label="Decrease BPM">-5</button>
+        <button onClick={() => adjust(-1)} aria-label="Decrease BPM">-1</button>
+        <button onClick={() => adjust(1)} aria-label="Increase BPM">+1</button>
+        <button onClick={() => adjust(5)} aria-label="Increase BPM">+5</button>
       </div>
     </div>
   );
 };
 
-export default BpmSelector;
+export default TempoSlider;
