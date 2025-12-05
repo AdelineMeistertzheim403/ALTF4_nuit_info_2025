@@ -112,6 +112,7 @@ function Game({ pseudo, onShoot, onHit }) {
                 let ny = ent.y + ent.vy;
                 let hasEntered = ent.entered;
 
+                // (Code de gestion des murs et entrée d'écran... inchangé)
                 if (!hasEntered) {
                     if (nx > 0 && nx < width && ny > 0 && ny < height) hasEntered = true;
                 } else {
@@ -126,10 +127,30 @@ function Game({ pseudo, onShoot, onHit }) {
                     }
                 }
 
-                if (Math.random() < 0.01) {
+                // --- MODIFICATION ICI : Ajout d'aléatoire + Limitation de vitesse ---
+
+                // 1. On ajoute la variation aléatoire (comme avant)
+                if (Math.random() < 0.05) { // J'ai augmenté un peu la proba (0.01 -> 0.05) pour qu'ils bougent plus
                     ent.vx += rand(-0.5, 0.5);
                     ent.vy += rand(-0.5, 0.5);
                 }
+
+                // 2. On impose la vitesse max (C'est nouveau)
+                const MAX_SPEED = 5; // Tu peux ajuster cette valeur (par ex: 4, 6, 8)
+                
+                // Math.hypot calcule la longueur du vecteur vitesse (racine carrée de x²+y²)
+                const currentSpeed = Math.hypot(ent.vx, ent.vy); 
+
+                if (currentSpeed > MAX_SPEED) {
+                    // On calcule le ratio de réduction nécessaire
+                    const ratio = MAX_SPEED / currentSpeed;
+                    // On applique ce ratio pour ralentir sans changer la direction
+                    ent.vx *= ratio;
+                    ent.vy *= ratio;
+                }
+
+                // ------------------------------------------------------------------
+
                 return { ...ent, x: nx, y: ny, entered: hasEntered };
             }));
 
@@ -140,17 +161,29 @@ function Game({ pseudo, onShoot, onHit }) {
                 const firingEnemies = [...prev];
                 firingEnemies.forEach(ent => {
                     if (now - ent.lastShot > ent.shootCooldown) {
-                        const dx = mx - ent.x; // Utilisation de mx (ref)
-                        const dy = my - ent.y; // Utilisation de my (ref)
-                        const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                        
+                        // 1. Calculer la distance et l'angle vers la souris (ref)
+                        const dx = mx - ent.x; 
+                        const dy = my - ent.y; 
+                        
+                        // Math.atan2 donne l'angle exact (en radians) vers le joueur
+                        const perfectAngle = Math.atan2(dy, dx);
+
+                        // 2. Ajouter de l'imprécision (Spread)
+                        // Une valeur de 0.2 correspond environ à +/- 11 degrés d'erreur.
+                        // Plus le chiffre est grand, moins ils sont précis.
+                        const spread = 0.1; 
+                        const angle = perfectAngle + rand(-spread, spread);
+
                         const speed = 5;
                         
                         setBullets(bPrev => [...bPrev, {
                             id: now + Math.floor(Math.random()*100000),
                             x: ent.x,
                             y: ent.y,
-                            vx: (dx / dist) * speed,
-                            vy: (dy / dist) * speed,
+                            // 3. Convertir l'angle final en vitesse X et Y
+                            vx: Math.cos(angle) * speed,
+                            vy: Math.sin(angle) * speed,
                             from: 'enemy'
                         }]);
 
@@ -247,17 +280,40 @@ function Game({ pseudo, onShoot, onHit }) {
                 }
             `}</style>
 
+            // ... dans le return du composant Game ...
+
             {enemies.map(ent => (
                 <Enemy key={ent.id} x={ent.x} y={ent.y} size={ent.size} img={ent.img} />
             ))}
 
-            {bullets.map(b => (
-                <div key={b.id} style={{
-                    position: 'absolute', left: b.x, top: b.y, transform: 'translate(-50%, -50%)',
-                    width: 10, height: 10, borderRadius: '50%', backgroundColor: 'lime',
-                    boxShadow: '0 0 6px lime', pointerEvents: 'none'
-                }} />
-            ))}
+            {/* --- MODIFICATION ICI : Rendu des balles --- */}
+            {bullets.map(b => {
+                // 1. Calculer l'angle de rotation basé sur la direction (vx, vy)
+                // Math.atan2(y, x) donne l'angle en radians.
+                const angleRad = Math.atan2(b.vy, b.vx);
+                // On convertit en degrés pour le CSS
+                const angleDeg = angleRad * (180 / Math.PI);
+
+                return (
+                    <div key={b.id} style={{
+                        position: 'absolute', 
+                        left: b.x, 
+                        top: b.y, 
+                        // 2. On applique la rotation. Important : translate d'abord pour centrer, puis rotate.
+                        transform: `translate(-50%, -50%) rotate(${angleDeg}deg)`,
+                        // 3. Nouveau style : un trait rouge long et fin
+                        width: 24,     // Longueur du laser
+                        height: 4,      // Épaisseur du laser
+                        borderRadius: '2px', // Légèrement arrondi aux bouts
+                        backgroundColor: '#ff0000', // Rouge vif
+                        // Une lueur rouge plus intense et un peu plus "étalée" pour l'effet laser
+                        boxShadow: '0 0 4px #ff0000, 0 0 8px rgba(255, 50, 50, 0.8)', 
+                        pointerEvents: 'none',
+                        // Optionnel : pour que le point d'origine du tir soit un peu devant
+                        transformOrigin: 'center center' 
+                    }} />
+                );
+            })}
         </div>
     );
 }
