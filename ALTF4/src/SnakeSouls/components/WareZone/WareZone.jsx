@@ -36,6 +36,8 @@ const CONFIG = {
     WASTE_COUNT: 20,           // Nombre de déchets sur la map
     WASTE_SIZE: 40,            // Taille des sprites de déchets
     WASTE_SPAWN_RADIUS: 1500,  // Rayon de spawn autour de l'origine
+    WASTE_SPAWN_RADIUS: 1500,  // Rayon de spawn autour du joueur
+    WASTE_MIN_DISTANCE: 200,   // Distance minimale de spawn (éviter de spawn trop près)
     PICKUP_DISTANCE: 35,       // Distance pour ramasser un déchet
 
     // Snake
@@ -89,31 +91,32 @@ export function WareZone({
     // ============================================
     // INITIALISATION DES DÉCHETS
     // ============================================
+    const spawnWasteAroundPlayer = useCallback((centerX, centerY) => {
+        const angle = Math.random() * Math.PI * 2;
+        const distance = CONFIG.WASTE_MIN_DISTANCE + Math.random() * (CONFIG.WASTE_SPAWN_RADIUS - CONFIG.WASTE_MIN_DISTANCE);
+        const x = centerX + Math.cos(angle) * distance;
+        const y = centerY + Math.sin(angle) * distance;
+
+        const spriteData = spriteLoader.getRandomSprite();
+        const image = new Image();
+        image.src = spriteData.src;
+
+        return { x, y, spriteData, image };
+    }, []);
+
     const spawnWastes = useCallback(async () => {
         // Charger tous les sprites
         await spriteLoader.loadAll();
 
         const wastes = [];
+        const centerX = playerPositionRef.current.x;
+        const centerY = playerPositionRef.current.y;
+
         for (let i = 0; i < CONFIG.WASTE_COUNT; i++) {
-            // Position aléatoire dans le rayon de spawn
-            const angle = Math.random() * Math.PI * 2;
-            const distance = Math.random() * CONFIG.WASTE_SPAWN_RADIUS;
-            const x = Math.cos(angle) * distance;
-            const y = Math.sin(angle) * distance;
-
-            // Obtenir un sprite (peut être une image ou une partie de spritesheet)
-            const spriteData = spriteLoader.getRandomSprite();
-            const image = new Image();
-            image.src = spriteData.src;
-
-            wastes.push({
-                x, y,
-                spriteData,
-                image
-            });
+            wastes.push(spawnWasteAroundPlayer(centerX, centerY));
         }
         wastesRef.current = wastes;
-    }, []);
+    }, [spawnWasteAroundPlayer]);
 
     // ============================================
     // INITIALISATION DU MONDE (textures de sol)
@@ -243,10 +246,12 @@ export function WareZone({
             `Camera: (${Math.round(camera.x)}, ${Math.round(camera.y)})`,
             `Player: (${Math.round(player.x)}, ${Math.round(player.y)})`,
             `Viewport: ${dimensions.width}x${dimensions.height}`,
+            `Wastes: ${wastesRef.current.length}`,
+            `Segments: ${segmentsRef.current.length}`,
         ];
 
         lines.forEach((line, i) => {
-            ctx.fillText(line, 10, dimensions.height - 60 + (i * 15));
+            ctx.fillText(line, 10, dimensions.height - 75 + (i * 15));
         });
     }, [dimensions]);
 
@@ -329,18 +334,32 @@ export function WareZone({
                 });
             }, 0);
 
-            // Spawner un nouveau déchet ailleurs
-            const angle = Math.random() * Math.PI * 2;
-            const dist = Math.random() * CONFIG.WASTE_SPAWN_RADIUS;
-            const newX = Math.cos(angle) * dist;
-            const newY = Math.sin(angle) * dist;
-            const spriteData = spriteLoader.getRandomSprite();
-            const image = new Image();
-            image.src = spriteData.src;
-            wastesRef.current.push({ x: newX, y: newY, spriteData, image });
+            // Spawner un nouveau déchet autour du joueur
+            const newWaste = spawnWasteAroundPlayer(
+                playerPositionRef.current.x,
+                playerPositionRef.current.y
+            );
+            wastesRef.current.push(newWaste);
         });
 
         wastesRef.current = remainingWastes;
+
+        // ---- REPOSITIONNER LES DÉCHETS TROP LOIN ----
+        // Vérifier si des déchets sont trop loin du joueur et les repositionner
+        wastesRef.current.forEach(waste => {
+            const dx = waste.x - playerPos.x;
+            const dy = waste.y - playerPos.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // Si le déchet est hors du rayon de spawn, le repositionner
+            if (distance > CONFIG.WASTE_SPAWN_RADIUS) {
+                const newWaste = spawnWasteAroundPlayer(playerPos.x, playerPos.y);
+                waste.x = newWaste.x;
+                waste.y = newWaste.y;
+                waste.spriteData = newWaste.spriteData;
+                waste.image = newWaste.image;
+            }
+        });
 
         // ---- COLLISION AVEC SOI-MÊME ----
         const collisionIndex = CollisionSystem.checkSelfCollision(
@@ -503,7 +522,7 @@ export function WareZone({
             drawDebugInfo(ctx, camera, deltaTime);
         }
 
-    }, [ctx, isPaused, gameState, fill, drawGrid, drawOrigin, drawDebugInfo, debug, onScoreChange]);
+    }, [ctx, isPaused, gameState, fill, drawGrid, drawOrigin, drawDebugInfo, debug, onScoreChange, spawnWasteAroundPlayer]);
 
     // Démarrer la boucle
     useGameLoop({
