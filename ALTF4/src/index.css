@@ -113,3 +113,16 @@ html, body, #root {
 .dialog-box button:focus {
   color: var(--color-primary);
 }
+
+.keys-btn {
+    padding: 10px 18px;
+    font-size: 15px;
+    border-radius: 8px;
+    background: rgb(12, 193, 81);
+    color: rgb(4, 32, 39);
+    border: medium;
+    cursor: pointer;
+    font-weight: 600;
+    box-shadow: rgba(0, 0, 0, 0.4) 0px 3px 8px;
+    width: 100%;
+}

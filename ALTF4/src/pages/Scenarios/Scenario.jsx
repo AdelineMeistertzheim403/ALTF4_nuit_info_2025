@@ -1,13 +1,18 @@
-import React, { useEffect, useState } from "react";
-import Dialogs from "../../lib/utils/dialogs.js";
+import React, { useEffect, useState } from 'react';
+import Dialogs from '../../lib/utils/dialogs.js';
 import LaserGame from "../../components/LaserGameComponent/LaserGame.jsx";
 import PlayMusic from "../../components/GrooveBox/playMusic.tsx";
+import './Scenario.css';
+import { useNavigate } from 'react-router-dom';
 
 const dialog = new Dialogs();
 
 function App() {
-  const [laserGameVisible, setLaserGameVisible] = useState(false);
-  const [showGrooveButton, setShowGrooveButton] = useState(false);
+    const [menuButtons, setMenuButtonsVisible] = useState(false);
+    const [showSecretButton, setShowSecretButton] = useState(false);
+    let [buildingCompleted, setBuildingCompleted] = useState(null);
+
+    const navigate = useNavigate();
 
   useEffect(() => {
     async function runScenario1() {
@@ -25,50 +30,106 @@ function App() {
       await dialog.showDialog("Pierre", "Je dois arranger ça… redonner l’accès au numérique à toutes les écoles.", 30);
     }
 
-    async function setupMainScreen() {
-      await dialog.changeBackground("/image_ville.jpeg");
-    }
+        const setupMainScreen = async () => {
+            await dialog.changeBackground('/image_ville.jpeg');
+        };
 
-    async function init() {
-      if (localStorage.getItem("scenario1") !== "1") {
-        setLaserGameVisible(false);
-        await runScenario1();
-        localStorage.setItem("scenario1", "1");
-      }
-      await setupMainScreen();
-      setLaserGameVisible(true);
-      setShowGrooveButton(true);
-    }
+        const init = async () => {
 
-    init();
-  }, []);
+            if (localStorage.getItem('scenario1') !== '1') {
+                setMenuButtonsVisible(false);
+                await runScenario1();
+                localStorage.setItem('scenario1', '1');
+            }
 
-  return (
-    <div>
-      {laserGameVisible && <LaserGame />}
-      <div style={floatingButtons}>
-        {showGrooveButton && (
-          <PlayMusic
-            to="/groovebox"
-            label="GrooveBox"
-            containerStyle={{ position: "static", marginTop: "48px" }} 
-            buttonStyle={{ width: "100%" }}
-            useDefaultPosition={false}
-          />
-        )}
-      </div>
-    </div>   
-  );
+            setBuildingCompleted(parseInt(localStorage.getItem('buildingCompleted')) || 0);
+
+            await setupMainScreen();
+            setMenuButtonsVisible(true);
+        };
+
+        init();
+
+        let typedKeys = '';
+        const secretCode = 'snake';
+
+        const handleKeyPress = (e) => {
+            typedKeys += e.key.toLowerCase();
+            if (typedKeys.length > secretCode.length) {
+                typedKeys = typedKeys.slice(-secretCode.length);
+            }
+            if (typedKeys === secretCode) {
+                setShowSecretButton(true);
+            }
+        };
+
+        window.addEventListener('keypress', handleKeyPress);
+
+        return () => {
+            window.removeEventListener('keypress', handleKeyPress);
+        };
+    }, []);
+
+    return (
+        <div className="scenario-container">
+            {menuButtons && (
+                <>
+                    <button className="building-button" id="building-button-1"
+                        style={{opacity: buildingCompleted >= 1 ? 0.5 : 1, cursor: buildingCompleted >= 1 ? 'not-allowed' : 'pointer'}}
+                        onClick={(e) => {
+                            if (buildingCompleted >= 1) {
+                                e.preventDefault();
+                            } else {
+                                navigate('/defis1');
+                            }
+                        }}
+                    >
+                        Défi 1
+                    </button>
+                    <button className="building-button" id="building-button-2"
+                        style={{opacity: buildingCompleted >= 2 || buildingCompleted < 1 ? 0.5 : 1, cursor: buildingCompleted >= 2 || buildingCompleted < 1 ? 'not-allowed' : 'pointer'}}
+                        onClick={(e) => {
+                            if (buildingCompleted >= 2 || buildingCompleted < 1) {
+                                e.preventDefault();
+                            } else {
+                                navigate('/defis2');
+                            }
+                        }}
+                    >
+                        Défi 2
+                    </button>
+                    <button className="building-button" id="building-button-3"
+                            style={{opacity: buildingCompleted >= 3 || buildingCompleted < 2 ? 0.5 : 1, cursor: buildingCompleted >= 3 || buildingCompleted < 2 ? 'not-allowed' : 'pointer'}}
+                            onClick={(e) => {
+                                if (buildingCompleted >= 3 || buildingCompleted < 2) {
+                                    e.preventDefault();
+                                } else {
+                                    navigate('/defis3');
+                                }
+                            }}
+                    >
+                        Défi 3
+                    </button>
+                    {showSecretButton && (
+                        <button className="secret-button" onClick={() => navigate('/snake')}><img src="./Snake.png" alt="Snake game" /></button>
+                    )}
+                    <LaserGame />
+                    <div style={{position: "fixed", top: "64px", right: "16px", zIndex: 9999,}}>
+                        <PlayMusic to="/groovebox" label="GrooveBox" containerStyle={{}} buttonStyle={{ width: "100%" }} useDefaultPosition={false}/>
+                    </div>
+                    <div style={{position: "fixed", top: "112px", right: "16px", zIndex: 9999}}>
+                        <button
+                            className="keys-btn"
+                            onClick={() => navigate('/keys')}
+
+                        >
+                            Keys
+                        </button>
+                    </div>
+                </>
+            )}
+        </div>
+    );
 }
 
 export default App;
-
-const floatingButtons = {
-  position: "fixed",
-  top: "16px",
-  right: "20px",
-  display: "flex",
-  flexDirection: "column",
-  gap: "8px",
-  zIndex: 1000,
-};
