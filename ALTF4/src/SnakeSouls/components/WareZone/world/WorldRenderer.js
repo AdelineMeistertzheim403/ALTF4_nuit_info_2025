@@ -6,8 +6,14 @@
  *
  * Techniques utilisées :
  * - Scatter : plusieurs passes de tuiles décalées
- * - Overlap : les tuiles se chevauchent légèrement
+ * - Overlap : les tuiles se chevauchent largement
  * - Variations : taille, rotation, opacité aléatoires
+ * - Feathering : dégradé sur les bords pour transitions douces (PRE-RENDERED)
+ *
+ * OPTIMISATIONS :
+ * - Pre-render des textures avec feathering au chargement
+ * - Cache des tuiles pré-rendues
+ * - Réduction du nombre de layers
  */
 
 export class WorldRenderer {
@@ -23,10 +29,15 @@ export class WorldRenderer {
     this.debug = false;
     this.showGrid = false;
 
-    // Paramètres pour le rendu naturel
-    this.overlap = 0.15; // 15% de chevauchement entre tuiles
-    this.scatterLayers = 2; // Nombre de couches de tuiles
-    this.scatterOffset = 0.3; // Décalage max des couches (en % de tileSize)
+    // Paramètres pour le rendu organique (optimisés)
+    this.overlap = 0.35; // 35% de chevauchement entre tuiles
+    this.scatterLayers = 2; // Réduit à 2 pour la perf
+    this.scatterOffset = 0.4; // Décalage max des couches
+
+    // Cache pour les textures pré-rendues avec feathering
+    this.featheredTextureCache = new Map();
+    this.featherMask = null;
+    this.cacheReady = false;
   }
 
   /**
@@ -38,10 +49,80 @@ export class WorldRenderer {
   }
 
   /**
+   * Initialise le cache des textures avec feathering
+   * Appelé une seule fois quand les textures sont chargées
+   */
+  initFeatheredCache() {
+    if (this.cacheReady) return;
+
+    const textures = this.tileSet.getAllTextures();
+    if (!textures || textures.length === 0) return;
+
+    // Créer le masque de feathering une seule fois
+    const size = 512; // Taille fixe pour le cache
+    this.featherMask = this.createFeatherMask(size);
+
+    // Pré-rendre chaque texture avec le feathering
+    textures.forEach(({ id, image }) => {
+      if (image && image.complete) {
+        const feathered = this.createFeatheredTexture(image, size);
+        this.featheredTextureCache.set(id, feathered);
+      }
+    });
+
+    this.cacheReady = true;
+    console.log(`[WorldRenderer] Cache initialisé avec ${this.featheredTextureCache.size} textures`);
+  }
+
+  /**
+   * Crée un masque de feathering (dégradé radial)
+   */
+  createFeatherMask(size) {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    const centerX = size / 2;
+    const centerY = size / 2;
+    const innerRadius = size * 0.25;
+    const outerRadius = size * 0.5;
+
+    const gradient = ctx.createRadialGradient(
+      centerX, centerY, innerRadius,
+      centerX, centerY, outerRadius
+    );
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    gradient.addColorStop(0.6, 'rgba(255, 255, 255, 0.8)');
+    gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+
+    return canvas;
+  }
+
+  /**
+   * Crée une version pré-rendue d'une texture avec feathering
+   */
+  createFeatheredTexture(texture, size) {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    // Dessiner la texture
+    ctx.drawImage(texture, 0, 0, size, size);
+
+    // Appliquer le masque de feathering
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.drawImage(this.featherMask, 0, 0, size, size);
+
+    return canvas;
+  }
+
+  /**
    * Dessine toutes les tuiles visibles avec effet naturel
-   *
-   * @param {CanvasRenderingContext2D} ctx - Contexte de dessin
-   * @param {Camera} camera - Caméra pour la conversion world→screen
    */
   render(ctx, camera) {
     // Vérifier que les textures sont chargées
@@ -50,16 +131,28 @@ export class WorldRenderer {
       return;
     }
 
+    // Initialiser le cache si pas encore fait
+    if (!this.cacheReady) {
+      this.initFeatheredCache();
+    }
+
     // Récupérer les bounds de la caméra
     const bounds = camera.getBounds();
 
-    // Récupérer les tuiles visibles
-    const tiles = this.tileMap.getVisibleTiles(bounds);
+    // Récupérer les tuiles visibles (avec marge pour le scatter)
+    const margin = this.tileMap.tileSize * 0.5;
+    const extendedBounds = {
+      left: bounds.left - margin,
+      right: bounds.right + margin,
+      top: bounds.top - margin,
+      bottom: bounds.bottom + margin
+    };
+    const tiles = this.tileMap.getVisibleTiles(extendedBounds);
 
-    // Dessiner plusieurs couches pour un effet plus naturel
+    // Dessiner les couches
     for (let layer = 0; layer < this.scatterLayers; layer++) {
       tiles.forEach(tile => {
-        this.renderTileNatural(ctx, camera, tile, layer);
+        this.renderTileOptimized(ctx, camera, tile, layer);
       });
     }
 
@@ -70,17 +163,15 @@ export class WorldRenderer {
   }
 
   /**
-   * Dessine une tuile avec effet naturel (scatter, overlap, variations)
-   *
-   * @param {CanvasRenderingContext2D} ctx
-   * @param {Camera} camera
-   * @param {Object} tile - Données de la tuile
-   * @param {number} layer - Couche de rendu (0 = base, 1+ = scatter)
+   * Dessine une tuile avec effet organique (version optimisée)
    */
-  renderTileNatural(ctx, camera, tile, layer) {
-    const texture = this.tileSet.getTexture(tile.textureId);
+  renderTileOptimized(ctx, camera, tile, layer) {
+    // Utiliser la texture pré-rendue avec feathering
+    const featheredTexture = this.featheredTextureCache.get(tile.textureId);
 
-    // Fallback si texture non trouvée
+    // Fallback sur texture normale si cache pas prêt
+    const texture = featheredTexture || this.tileSet.getTexture(tile.textureId);
+
     if (!texture) {
       if (layer === 0) {
         this.renderFallbackTile(ctx, camera, tile);
@@ -89,103 +180,73 @@ export class WorldRenderer {
     }
 
     const baseSize = this.tileMap.tileSize;
-
-    // Taille avec overlap (légèrement plus grand pour couvrir les bords)
     const overlapSize = baseSize * (1 + this.overlap);
-
-    // Décalage pour centrer l'overlap
     const overlapOffset = (overlapSize - baseSize) / 2;
 
-    // Position de base
-    let worldX = tile.worldX - overlapOffset;
-    let worldY = tile.worldY - overlapOffset;
+    // Position avec variations déterministes
+    const baseOffsetX = (this.seededRandom(tile.x, tile.y, 1) - 0.5) * baseSize * 0.08;
+    const baseOffsetY = (this.seededRandom(tile.x, tile.y, 2) - 0.5) * baseSize * 0.08;
 
-    // Pour les couches supplémentaires, ajouter un décalage aléatoire
+    let worldX = tile.worldX - overlapOffset + baseOffsetX;
+    let worldY = tile.worldY - overlapOffset + baseOffsetY;
+
     let opacity = 1;
     let sizeMultiplier = 1;
 
-    if (layer > 0) {
-      // Décalage pseudo-aléatoire basé sur la position
+    if (layer === 0) {
+      opacity = 0.9 + this.seededRandom(tile.x, tile.y, 10) * 0.1;
+      sizeMultiplier = 1.0 + this.seededRandom(tile.x, tile.y, 11) * 0.08;
+    } else {
+      // Scatter layers
       const offsetX = (this.seededRandom(tile.x, tile.y, layer * 100) - 0.5) * baseSize * this.scatterOffset;
       const offsetY = (this.seededRandom(tile.x, tile.y, layer * 200) - 0.5) * baseSize * this.scatterOffset;
-
       worldX += offsetX;
       worldY += offsetY;
 
-      // Opacité réduite pour les couches supérieures
-      opacity = 0.3 + this.seededRandom(tile.x, tile.y, layer * 300) * 0.3;
-
-      // Légère variation de taille
-      sizeMultiplier = 0.9 + this.seededRandom(tile.x, tile.y, layer * 400) * 0.2;
+      opacity = 0.25 + this.seededRandom(tile.x, tile.y, layer * 300) * 0.35;
+      sizeMultiplier = 0.75 + this.seededRandom(tile.x, tile.y, layer * 400) * 0.4;
     }
 
     const finalSize = overlapSize * sizeMultiplier;
-
-    // Convertir position monde → écran
     const screenPos = camera.worldToScreen(worldX, worldY);
-
-    // Centre de la tuile (pour les rotations)
     const centerX = screenPos.x + finalSize / 2;
     const centerY = screenPos.y + finalSize / 2;
 
-    // Rotation plus variée (pas seulement 90°)
-    let rotation = tile.rotation;
-    if (layer > 0) {
-      // Ajouter une rotation supplémentaire pour les couches scatter
-      rotation += (this.seededRandom(tile.x, tile.y, layer * 500) - 0.5) * 0.5;
-    }
+    // Rotation libre
+    const rotation = this.seededRandom(tile.x, tile.y, layer * 500 + 50) * Math.PI * 2;
 
-    // Sauvegarder l'état du contexte
+    // Flip aléatoire
+    const flipX = this.seededRandom(tile.x, tile.y, layer * 600) > 0.5 ? -1 : 1;
+    const flipY = this.seededRandom(tile.x, tile.y, layer * 700) > 0.5 ? -1 : 1;
+
     ctx.save();
-
-    // Appliquer l'opacité
     ctx.globalAlpha = opacity;
-
-    // Appliquer les transformations
     ctx.translate(centerX, centerY);
     ctx.rotate(rotation);
-    ctx.scale(tile.flipX ? -1 : 1, tile.flipY ? -1 : 1);
+    ctx.scale(flipX, flipY);
 
-    // Variation de luminosité
-    if (tile.brightness !== 1) {
-      ctx.filter = `brightness(${tile.brightness})`;
-    }
+    // Dessiner directement la texture pré-rendue (pas de filter pour la perf)
+    ctx.drawImage(texture, -finalSize / 2, -finalSize / 2, finalSize, finalSize);
 
-    // Dessiner la texture
-    ctx.drawImage(
-      texture,
-      -finalSize / 2,
-      -finalSize / 2,
-      finalSize,
-      finalSize
-    );
-
-    // Reset
-    ctx.filter = 'none';
     ctx.globalAlpha = 1;
-
-    // Restaurer l'état
     ctx.restore();
 
-    // Debug : afficher les infos de tuile (seulement layer 0)
     if (this.debug && layer === 0) {
       this.renderTileDebug(ctx, screenPos, tile);
     }
   }
 
   /**
-   * Dessine une tuile de fallback (quand la texture n'est pas chargée)
+   * Dessine une tuile de fallback
    */
   renderFallbackTile(ctx, camera, tile) {
     const tileSize = this.tileMap.tileSize;
     const screenPos = camera.worldToScreen(tile.worldX, tile.worldY);
-    
-    // Damier pour visualiser
+
     const isEven = (tile.x + tile.y) % 2 === 0;
     ctx.fillStyle = isEven ? '#1a1a2e' : '#16162a';
     ctx.fillRect(screenPos.x, screenPos.y, tileSize, tileSize);
-    
-    // Bordure
+
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
     ctx.lineWidth = 1;
     ctx.strokeRect(screenPos.x, screenPos.y, tileSize, tileSize);
@@ -198,10 +259,10 @@ export class WorldRenderer {
     const bounds = camera.getBounds();
     const centerX = (bounds.right - bounds.left) / 2;
     const centerY = (bounds.bottom - bounds.top) / 2;
-    
+
     ctx.fillStyle = '#0a0a0f';
     ctx.fillRect(0, 0, bounds.right - bounds.left, bounds.bottom - bounds.top);
-    
+
     ctx.fillStyle = 'white';
     ctx.font = '24px sans-serif';
     ctx.textAlign = 'center';
@@ -213,14 +274,13 @@ export class WorldRenderer {
    */
   renderGrid(ctx, camera, bounds) {
     const tileSize = this.tileMap.tileSize;
-    
+
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
     ctx.lineWidth = 1;
 
     const startX = Math.floor(bounds.left / tileSize) * tileSize;
     const startY = Math.floor(bounds.top / tileSize) * tileSize;
 
-    // Lignes verticales
     for (let x = startX; x <= bounds.right; x += tileSize) {
       const screen = camera.worldToScreen(x, 0);
       ctx.beginPath();
@@ -229,7 +289,6 @@ export class WorldRenderer {
       ctx.stroke();
     }
 
-    // Lignes horizontales
     for (let y = startY; y <= bounds.bottom; y += tileSize) {
       const screen = camera.worldToScreen(0, y);
       ctx.beginPath();
@@ -243,32 +302,16 @@ export class WorldRenderer {
    * Affiche les infos de debug d'une tuile
    */
   renderTileDebug(ctx, screenPos, tile) {
-    const tileSize = this.tileMap.tileSize;
-    
     ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
     ctx.font = '10px monospace';
-    ctx.fillText(
-      `${tile.x},${tile.y}`,
-      screenPos.x + 5,
-      screenPos.y + 15
-    );
-    ctx.fillText(
-      tile.textureId.substring(0, 10),
-      screenPos.x + 5,
-      screenPos.y + 25
-    );
+    ctx.fillText(`${tile.x},${tile.y}`, screenPos.x + 5, screenPos.y + 15);
+    ctx.fillText(tile.textureId.substring(0, 10), screenPos.x + 5, screenPos.y + 25);
   }
 
-  /**
-   * Active/désactive le mode debug
-   */
   setDebug(enabled) {
     this.debug = enabled;
   }
 
-  /**
-   * Active/désactive la grille
-   */
   setShowGrid(enabled) {
     this.showGrid = enabled;
   }

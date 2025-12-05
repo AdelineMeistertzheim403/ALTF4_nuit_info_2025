@@ -119,6 +119,20 @@ export class TileSet {
   }
 
   /**
+   * Récupère toutes les textures chargées
+   * @returns {Array<{id: string, image: HTMLImageElement}>}
+   */
+  getAllTextures() {
+    const result = [];
+    this.textures.forEach((data, id) => {
+      if (data.loaded && data.image) {
+        result.push({ id, image: data.image });
+      }
+    });
+    return result;
+  }
+
+  /**
    * Vérifie si toutes les textures sont chargées
    * @returns {boolean}
    */
