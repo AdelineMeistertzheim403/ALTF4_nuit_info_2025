@@ -16,17 +16,18 @@ function App() {
   return (
     <div className="App">
       <Routes>
-        <Route path="/" element={<Home />} />
           <Route path="/keys" element={<KeysPage/>}/>
           <Route path="/digicode" element={<DigicodePage/>}/>
         <Route path="/scenario" element={<Scenario />} />
+        <Route path="/" element={<Scenario />} />
+
         <Route path="/groovebox" element={<GrooveBoxMain/>}/>
           <Route path="/defis1" element={<Defis1/>}/>
           <Route path="/defis2" element={<Defis2/>}/>
           <Route path="/defis3" element={<Defis3/>}/>
 
 
-        <Route path="*" element={<Home />} /> {/* Route 404 : redirige vers la page principale */}
+        <Route path="*" element={<Scenario />} /> {/* Route 404 : redirige vers la page principale */}
       </Routes>
     </div>
   );
