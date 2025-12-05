@@ -44,10 +44,6 @@ function LaserGame() {
 
             {step === 'game' && (
                 <div>
-                    <div style={{ position: 'relative', zIndex: 10 }}>
-                        <LeaderBoard pseudo={pseudo} score={score} />
-                    </div>
-
                     {/* On passe onHit au jeu */}
                     <Game 
                         pseudo={pseudo} 

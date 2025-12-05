@@ -1,0 +1,116 @@
+/* --- GLOBAL / BACKGROUND --- */
+body {
+    margin: 0;
+}
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: radial-gradient(circle at center, #0a0a1a, #000000 70%);
+  font-family: 'Orbitron', sans-serif;
+  padding: 20px;
+  color: #8be0ff;
+  text-shadow: 0 0 10px #4fc3f7;
+}
+
+.container h1 {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  margin-bottom: 1.5rem;
+  color: #72d5ff;
+  text-align: center;
+  letter-spacing: 2px;
+  text-shadow: 0 0 12px #00aaff, 0 0 25px #0080ff;
+}
+
+.error {
+  color: #ff4f8b;
+  margin-bottom: 1rem;
+  font-size: clamp(1rem, 2.5vw, 1.3rem);
+  text-shadow: 0 0 10px #ff2f6f;
+}
+
+/* --- GRID --- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(70px, 100px));
+  grid-gap: clamp(12px, 4vw, 22px);
+  margin-bottom: 1.5rem;
+}
+
+/* --- CELLS --- */
+.cell {
+  width: clamp(70px, 20vw, 100px);
+  height: clamp(70px, 20vw, 100px);
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(0, 195, 255, 0.6);
+  border-radius: 12px;
+  cursor: pointer;
+  backdrop-filter: blur(2px);
+
+  box-shadow: 0 0 10px #0099ff55,
+              inset 0 0 8px #00ccff55;
+
+  transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+}
+
+.cell:hover {
+  background: rgba(0, 195, 255, 0.1);
+  transform: scale(1.05);
+  box-shadow: 0 0 12px #00cfff, inset 0 0 10px #00e1ff;
+}
+
+.cell.active {
+  background: #00bfff;
+  box-shadow: 0 0 18px #00e5ff, 0 0 40px #0099ff;
+  transform: scale(1.12);
+}
+
+/* --- RESET BUTTON --- */
+.reset-button {
+  padding: 12px 28px;
+  background: transparent;
+  border: 2px solid #ff4f8b;
+  color: #ff7aa8;
+  border-radius: 10px;
+  font-size: clamp(1rem, 3vw, 1.2rem);
+  letter-spacing: 1px;
+  cursor: pointer;
+
+  text-shadow: 0 0 8px #ff5f9b;
+  box-shadow: 0 0 10px #ff2f6f55, inset 0 0 10px #ff2f6f55;
+
+  transition: 0.25s ease;
+}
+
+.reset-button:hover {
+  background: #ff4f8b22;
+  box-shadow: 0 0 16px #ff2f6f, inset 0 0 12px #ff2f6f;
+  color: #ffb3cd;
+  transform: scale(1.08);
+}
+
+.home-button {
+  margin-top: 20px;
+  padding: 12px 28px;
+  background: transparent;
+  border: 2px solid #72d5ff;
+  color: #72d5ff;
+  border-radius: 10px;
+  font-size: clamp(1rem, 3vw, 1.2rem);
+  letter-spacing: 1px;
+  cursor: pointer;
+
+  text-shadow: 0 0 8px #4fc3f7;
+  box-shadow: 0 0 12px #00caff55, inset 0 0 12px #00bfff33;
+
+  transition: 0.25s ease;
+}
+
+.home-button:hover {
+  background: #00aaff22;
+  color: white;
+  box-shadow: 0 0 18px #00e5ff, inset 0 0 15px #0099ff;
+  transform: scale(1.08);
+}

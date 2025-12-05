@@ -126,7 +126,6 @@ class Dialogs {
     }
 
     changeBackground(image) {
-        console.log('[changeBackground] Starting transition to:', image);
         return new Promise((resolve) => {
             const blackOverlay = document.createElement('div');
             blackOverlay.style.cssText = `
@@ -152,14 +151,12 @@ class Dialogs {
             });
 
             setTimeout(() => {
-                console.log('[changeBackground] Changing background at black peak');
                 document.body.style.backgroundImage = `url(${image})`;
 
                 blackOverlay.style.opacity = '0';
 
                 setTimeout(() => {
                     document.body.removeChild(blackOverlay);
-                    console.log('[changeBackground] Transition complete, resolving');
                     resolve();
                 }, 600);
             }, 600);

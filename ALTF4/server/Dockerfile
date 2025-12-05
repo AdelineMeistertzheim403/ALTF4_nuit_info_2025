@@ -1,13 +1,19 @@
 FROM node:20-alpine
+
+# Définir le répertoire de travail
 WORKDIR /app
 
+# Copier les fichiers package
 COPY package*.json ./
-COPY prisma ./prisma
 
-RUN npm install
-RUN npx prisma generate
+# Installer les dépendances
+RUN npm install --production
 
+# Copier le code source
 COPY . .
 
+# Exposer le port
 EXPOSE 4000
-CMD ["sh", "-c", "npx prisma migrate deploy && node src/index.js"]
+
+# Démarrer l'application
+CMD ["npm", "start"]
