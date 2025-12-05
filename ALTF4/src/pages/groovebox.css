@@ -84,6 +84,29 @@
   gap: 12px;
 }
 
+.groove-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.exit-btn {
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid #1e2434;
+  background: #10131c;
+  color: #e5ecf7;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+.exit-btn:hover {
+  border-color: #ff7f7f;
+  color: #ffbcbc;
+}
+
 .tempo-inline {
   width: 100%;
 }
