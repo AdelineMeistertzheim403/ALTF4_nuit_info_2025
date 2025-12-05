@@ -1,0 +1,108 @@
+.groovebox {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #111;
+  padding: 20px 25px;
+  border-radius: 14px;
+  box-shadow: 0 0 30px #000 inset;
+  margin: auto;
+  width: fit-content;
+  border: 1px solid #222;
+}
+
+/* --- Tracks --- */
+.track {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.track .label {
+  width: 90px;
+  color: #00eaff;
+  font-size: 14px;
+  font-weight: 700;
+  text-shadow: 0 0 6px #00eaff;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* --- Step buttons --- */
+.step {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: #1b1b1b;
+  border: 1px solid #333;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.step:hover {
+  transform: scale(1.12);
+  border-color: #666;
+}
+
+.step.active {
+  background: #00ff55;
+  border-color: #00ff55;
+  box-shadow: 0 0 15px #00ff55, 0 0 3px #00ff55 inset;
+}
+
+.step.playing {
+  outline: 2px solid #ffee00;
+  box-shadow: 0 0 12px #ffee00;
+}
+
+.mute-btn {
+  margin-left: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #2c3142;
+  background: #0d0f17;
+  color: #dce6f5;
+  font-size: 12px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.mute-btn:hover {
+  border-color: #00eaff;
+  color: #00eaff;
+}
+
+.mute-btn.muted {
+  background: #2a2f3d;
+  border-color: #ff6b6b;
+  color: #ffbcbc;
+}
+
+/* --- Controls (Play, Stop, Reset...) --- */
+.controls {
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+}
+
+button.action {
+  background: #0d0d0d;
+  border: 1px solid #444;
+  padding: 10px 22px;
+  border-radius: 10px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease-out;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+button.action:hover {
+  background: #222;
+  border-color: #00eaff;
+  color: #00eaff;
+  box-shadow: 0 0 12px #00eaff;
+}
