@@ -26,10 +26,17 @@ export default function KeysPage() {
         { type: "bronze", x: 25, y: 18 },
     ];
 
-    // Correct horizontal angle (images are vertical by default)
+
     function isHorizontal(angle) {
-        const corrected = (angle + 90) % 360; // 90° shift
-        return corrected < 5 || corrected > 355;
+
+        let corrected = (angle + 90) % 360;
+
+        // Normalize (-180 → +180)
+        if (corrected > 180) corrected -= 360;
+        if (corrected < -180) corrected += 360;
+
+        const tolerance = 10;
+        return Math.abs(corrected) <= tolerance;
     }
 
     // Collision based on centers
