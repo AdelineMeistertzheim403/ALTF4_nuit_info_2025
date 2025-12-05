@@ -17,6 +17,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useCanvas } from './hooks/useCanvas';
 import { useGameLoop } from './hooks/useGameLoop';
 import { Camera } from './camera/Camera';
+import { createWorld } from './world';
 import InputManager from '../../game/core/InputManager';
 import { spriteLoader } from '../../game/data/wasteSprites';
 import CollisionSystem from '../../game/systems/CollisionSystem';
@@ -76,9 +77,14 @@ export function WareZone({
     const wastesRef = useRef([]); // { x, y, sprite, image }
     const wastesInitializedRef = useRef(false);
 
+    // Monde (sol avec textures)
+    const worldRef = useRef(null);
+    const worldInitializedRef = useRef(false);
+
     // ---- State ----
     const [score, setScore] = useState(0);
     const [gameState, setGameState] = useState('playing'); // 'playing' | 'paused' | 'gameover'
+    const [worldReady, setWorldReady] = useState(false);
 
     // ============================================
     // INITIALISATION DES DÉCHETS
@@ -107,6 +113,27 @@ export function WareZone({
             });
         }
         wastesRef.current = wastes;
+    }, []);
+
+    // ============================================
+    // INITIALISATION DU MONDE (textures de sol)
+    // ============================================
+    useEffect(() => {
+        if (worldInitializedRef.current) return;
+        worldInitializedRef.current = true;
+
+        const initWorld = async () => {
+            try {
+                const world = await createWorld({ tileSize: 256, seed: 42 });
+                worldRef.current = world;
+                setWorldReady(true);
+                console.log('[WareZone] World initialized with textures');
+            } catch (error) {
+                console.error('[WareZone] Failed to initialize world:', error);
+            }
+        };
+
+        initWorld();
     }, []);
 
     // ============================================
@@ -349,8 +376,12 @@ export function WareZone({
         // 1. Fond
         fill(CONFIG.BACKGROUND_COLOR);
 
-        // 2. Grille infinie
-        drawGrid(ctx, camera);
+        // 2. Sol avec textures (ou grille de fallback)
+        if (worldRef.current) {
+            worldRef.current.render(ctx, camera);
+        } else {
+            drawGrid(ctx, camera);
+        }
 
         // 3. Origine (debug)
         if (debug || CONFIG.DEBUG) {

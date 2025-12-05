@@ -51,7 +51,7 @@ src/
 └── App.jsx                      # Point d'entrée React
 ```
 
-Gestionnaire de Tilemap :
+#Gestionnaire de Tilemap :
 
 ```
 warezone/
